@@ -6,12 +6,14 @@ import com.example.MyBlog.domain.likes.entity.Like;
 import com.example.MyBlog.domain.post.entity.Post;
 import jakarta.persistence.*;
 import lombok.Getter;
+import org.springframework.util.DigestUtils;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(indexes = @Index(name = "idx_member_username", columnList = "USERNAME"))
+@Table(indexes = @Index(name = "idx_member_usernameHash", columnList = "USERNAME_HASH"))
 @Getter
 public class Member {
     @Id @GeneratedValue @Column(name = "MEMBER_ID")
@@ -32,6 +34,12 @@ public class Member {
 
     @Column(nullable = false, unique = true, name = "USERNAME")
     private String username; // 아이디 역할
+
+
+    // 문자열 유저네임을 MD5 해시로 변환하여 도출된 바이너리 값을 저장하는 별도의 컬럼(jwt access token을 이용한 인증에서 사용)
+    // MD5 방식은 단방향 해싱이므로, 해시 값에서 문자열로 다시 변환할 수 없다.(참고)
+    @Column(nullable = false, columnDefinition = "BINARY(16)", unique = true, name = "USERNAME_HASH")
+    private byte[] usernameHash;
 
     @OneToMany(mappedBy = "member", cascade = CascadeType.REMOVE)
     private List<Post> posts = new ArrayList<>();
@@ -62,9 +70,12 @@ public class Member {
 
     public void setUsername(String username) {
         this.username = username;
+        this.usernameHash = DigestUtils.md5Digest(username.getBytes(StandardCharsets.UTF_8));
+        // 유저네임 해시코드는 유저네임 저장할때 한번에 저장
     }
 
     public void setRoleType(RoleType roleType) {
         this.roleType = roleType;
     }
+
 }

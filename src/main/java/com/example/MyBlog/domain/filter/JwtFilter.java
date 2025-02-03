@@ -29,11 +29,36 @@ public class JwtFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         // request 헤더에서 "Authorization" 키의 값(JWT)을 찾는다.
         String authorization = request.getHeader("Authorization");
+        String refreshToken = request.getHeader("Refresh");
 
         // 키의 값이 존재하고, 해당 키의 값이 "Bearer "로 시작하면(공백 포함) JWT를 가지고 있다는 의미이다.
 
+        // Refresh Token 값이 존재하고, "Refresh "로 시작하는 경우
+        if(refreshToken != null && refreshToken.startsWith("Refresh ")) {
+            // 실제 토큰 부분 추출
+            String token = refreshToken.split(" ")[1];
+            String username = jwtUtil.getUsername(token);
+            String role = jwtUtil.getRole(token);
+            String uuid = jwtUtil.getId(token);
 
-        // 키의 값이 존재하지 않거나 값이 "Bearer "로 시작하지 않는 경우는 잘못된 값이다.
+            // 만료 여부 검증
+            if(jwtUtil.isExistRefresh(username, uuid)) {
+                String access = jwtUtil.createJwt(username, role);
+                String refresh = jwtUtil.createRefresh(username, role);
+
+                response.addHeader("Authorization", "Bearer " + access);
+                response.addHeader("Refresh", "Refresh " + refresh);
+
+                setAuthentication(token);
+                filterChain.doFilter(request, response);
+                return;
+            } else {
+                filterChain.doFilter(request, response);
+                return;
+            }
+        }
+
+        // 키의 값이 존재하지 않거나(최초 로그인 시) 값이 "Bearer " 혹은 "Refresh "로 시작하지 않는 경우는 잘못된 값이다.
         if(authorization == null || !authorization.startsWith("Bearer ")) {
             System.out.println("token null");
             filterChain.doFilter(request, response);
@@ -44,25 +69,31 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = authorization.split(" ")[1]; // JWT에 해당하는 부분만 따로 가져온다.
 
-        // 토큰이 만료된 경우, 인가를 하지 않는다.
+        // 토큰이 만료된 경우
         if(jwtUtil.isExpired(token)) {
-            System.out.println("Token Expired");
+            System.out.println("Access Token Expired");
             filterChain.doFilter(request, response);
             return; // 이 조건이 맞으면 메소드 종료(break) - 이것은 필수로 해줘야 한다.
         }
 
         // 예외사항에 해당되지 않으면 아래를 실행
+        setAuthentication(token);
 
+        filterChain.doFilter(request, response);
+    }
+
+    // SecurityContextHolder 세션에 인증된 사용자 추가(임시 일회성 세션)
+    private void setAuthentication(String token) {
         String username = jwtUtil.getUsername(token);
         String role = jwtUtil.getRole(token);
 
+        // username, role, password(더미 비밀번호) 를 전달하기 위한 AuthDTO
         AuthDTO authDTO = new AuthDTO();
         authDTO.setUsername(username);
         authDTO.setRoleType(role);
         // JWT를 이용한 인증에는 패스워드 정보가 필요없다.
-        // 그러나 공백으로 두면 불필요한 쿼리문이 발생할 수도 있으므로 임시 비밀번호 아무거나 설정하자.
+        // UserDetails 인터페이스의 getPassword()를 구현하기 위한 더미 비밀번호
         authDTO.setPassword("tempPW");
-
 
         // UserDetails에 인증에 필요한 유저 정보 담기
         JwtUserDetails jwtUserDetails = new JwtUserDetails(authDTO);
@@ -72,6 +103,5 @@ public class JwtFilter extends OncePerRequestFilter {
 
         // SecurityContextHolder 세션에 사용자 등록
         SecurityContextHolder.getContext().setAuthentication(authToken);
-        filterChain.doFilter(request, response);
     }
 }

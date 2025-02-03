@@ -42,17 +42,26 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
 
     @Override // 로그인 성공 시 수행되는 메소드(JWT 발급)
     protected void successfulAuthentication(HttpServletRequest req, HttpServletResponse res, FilterChain chain, Authentication auth) {
+        // (JwtUserDetails) auth.getPrincipal(): 인증된 사용자 정보를 JwtUserDetails 타입으로 가져온다.
         JwtUserDetails jwtUserDetails = (JwtUserDetails) auth.getPrincipal();
-        String username = jwtUserDetails.getUsername();
 
+        // 얻어온 사용자 정보에서 유저네임과 권한 정보를 추출한다.
+        String username = jwtUserDetails.getUsername();
         Collection<? extends GrantedAuthority> authorities = jwtUserDetails.getAuthorities();
+
+        // 권한 리스트에서 첫 번째 요소만 취급한다.(내 서비스에서는 권한을 하나만 가질 수 있기 때문.)
         Iterator<? extends GrantedAuthority> iterator = authorities.iterator();
         GrantedAuthority grantedAuthority = iterator.next();
-
+        // 가져온 권한 정보를 String으로 추출
         String role = grantedAuthority.getAuthority();
-        String token = jwtUtil.createJwt(username, role);
 
-        res.addHeader("Authorization", "Bearer " + token);
+        // 최종적으로 얻어낸 정보를 토대로 access, refresh token 생성
+        String access = jwtUtil.createJwt(username, role);
+        String refresh = jwtUtil.createRefresh(username, role);
+
+        // 응답 헤더에 첨부
+        res.addHeader("Authorization", "Bearer " + access);
+        res.addHeader("Refresh", "Refresh " + refresh);
     }
 
 

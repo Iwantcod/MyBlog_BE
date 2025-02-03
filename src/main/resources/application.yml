@@ -1,0 +1,42 @@
+spring:
+  datasource:
+    url: jdbc:mariadb://localhost:3306/blog?useUnicode=true&characterEncoding=utf8
+    username: blog
+    password: Qwerty1234!
+    driver-class-name: org.mariadb.jdbc.Driver
+    # 커넥션 풀 개수 설정
+    hikari:
+      pool-name: HikariCP
+      maximum-pool-size: 10
+  jpa:
+    hibernate:
+      ddl-auto: update  # 개발 시에는 'create', 실제 운영 시에는 'validate' or 'none'으로 설정
+    properties:
+      hibernate:
+        show_sql: true
+        format_sql: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      connect-timeout: 3000
+
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: debug
+
+# JWT 관련 설정
+jwt:
+  secret: PkHi990J2YzLGf8cReFVQesms9w1LAziiK9jf9VH0hN2txvSQFyItOOVRwR3OaKw # JWT 서명에 사용되는 비밀 키 (이 값은 환경에 맞게 적절히 관리해야 합니다)
+  refresh-secret: XbPra89KFguYhSrq9XHsesuYUHqSEvsdt1ZP07kwcdwj1j4ylqCr7zu8sh1UKQ4U # JWT REFRESH 토큰 생성에 사용되는 비밀키
+  expiration: 900000                  # JWT 만료 시간: 15 min (밀리초 단위, 1시간 = 3600000ms, 15분 = 900000ms)
+  refresh-expiration: 604800000       # 리프레시 토큰 만료시간 (7 days)
+
+# 포트번호 지정
+server:
+  port: 61314
+  address: 0.0.0.0
+#  servlet: # API 루트 경로 변경
+#    context-path: /api
