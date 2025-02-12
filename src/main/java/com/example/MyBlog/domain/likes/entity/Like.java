@@ -20,7 +20,8 @@ public class Like {
     @ManyToOne(fetch = FetchType.LAZY)
     private Member member;
 
-    private int counts;
+    private String memberUsername;
+
 
     public void setPost(Post post) {
         this.post = post;
@@ -29,10 +30,8 @@ public class Like {
 
     public void setMember(Member member) {
         this.member = member;
+        this.memberUsername = member.getUsername();
         member.getLikes().add(this);
     }
 
-    public void setCounts(int counts) {
-        this.counts = counts;
-    }
 }

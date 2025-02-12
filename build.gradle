@@ -43,7 +43,10 @@ dependencies {
 	implementation 'io.jsonwebtoken:jjwt-impl:0.11.5' // JWT의 실제 구현을 포함
 	implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5' // Jackson을 통한 JWT의 직렬화 및 역직렬화 지원
 	implementation 'org.springframework.boot:spring-boot-starter-validation' // Validation
+	implementation 'net.coobird:thumbnailator:0.4.18'
+	implementation 'commons-io:commons-io:2.11.0'
 }
+
 
 tasks.named('test') {
 	useJUnitPlatform()

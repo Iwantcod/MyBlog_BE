@@ -3,6 +3,7 @@ package com.example.MyBlog.domain.filter;
 import com.example.MyBlog.domain.Util.JwtUtil;
 import com.example.MyBlog.domain.member.DTO.AuthDTO;
 import com.example.MyBlog.domain.member.details.JwtUserDetails;
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,7 +27,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException, ExpiredJwtException {
         // request 헤더에서 "Authorization" 키의 값(JWT)을 찾는다.
         String authorization = request.getHeader("Authorization");
         String refreshToken = request.getHeader("Refresh");
@@ -78,7 +79,6 @@ public class JwtFilter extends OncePerRequestFilter {
 
         // 예외사항에 해당되지 않으면 아래를 실행
         setAuthentication(token);
-
         filterChain.doFilter(request, response);
     }
 

@@ -4,6 +4,8 @@ import com.example.MyBlog.domain.member.DTO.JoinDTO;
 import com.example.MyBlog.domain.member.DTO.MemberDTO;
 import com.example.MyBlog.domain.member.service.MemberService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +15,8 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/member")
 public class MemberController {
 
+    @Value("${app.server-url}")
+    private String serverUrl;
     private final MemberService memberService;
 
     @Autowired
@@ -20,44 +24,53 @@ public class MemberController {
         this.memberService = memberService;
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<MemberDTO> getMemberById(@PathVariable Long id) {
-        MemberDTO memberDTO = memberService.getMemberById(id);
-        if(memberDTO == null){
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        } else {
-            return new ResponseEntity<>(memberDTO, HttpStatus.OK);
-        }
-    }
 
-    // 문자열인 유저네임을 입력값으로 받아, 그것을 해시값으로 변환한 값으로 데이터베이스에서 검색
-    // jwt를 이용한 인증에서 유저네임을 기준으로 조회할 때 사용한다.
-    @GetMapping("/{username}")
+    @GetMapping("/name/{username}")
     public ResponseEntity<MemberDTO> getMemberByUsernameHash(@PathVariable String username) {
-        MemberDTO memberDTO = memberService.getMemberByUsernameHash(username);
-        if(memberDTO == null){
+        MemberDTO memberDTO = memberService.getMemberByUsername(username);
+        if (memberDTO == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         } else {
             return new ResponseEntity<>(memberDTO, HttpStatus.OK);
         }
     }
 
-    @PatchMapping("/")
-    public ResponseEntity<MemberDTO> updateMember(@RequestBody JoinDTO newMemberDTO) {
-        MemberDTO memberDTO = memberService.updateMember(newMemberDTO);
-        if(memberDTO == null){
+    @GetMapping("/{userId}")
+    public ResponseEntity<MemberDTO> getMemberByUserId(@PathVariable Long userId) {
+        MemberDTO memberDTO = memberService.getMemberById(userId);
+        if (memberDTO == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         } else {
             return new ResponseEntity<>(memberDTO, HttpStatus.OK);
         }
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteMember(@PathVariable Long id) {
-        if(memberService.deleteMemberById(id)) {
-            return new ResponseEntity<>(HttpStatus.OK);
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout() {
+        if(memberService.logout()) {
+            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, serverUrl+"/").build();
         } else {
-            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
+    @PatchMapping("/{userId}")
+    public ResponseEntity<?> updateMember(@RequestBody JoinDTO newMemberDTO, @PathVariable Long userId) {
+        if(memberService.updateMemberById(newMemberDTO, userId)){
+            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, serverUrl+"/").build();
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<?> deleteMember(@PathVariable Long userId) {
+
+        if(memberService.deleteMemberById(userId)) {
+            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, serverUrl+"/").build();
+        } else {
+            return ResponseEntity.status(404).build();
         }
     }
 

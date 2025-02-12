@@ -1,27 +1,31 @@
 package com.example.MyBlog.domain.member.service;
 
+import com.example.MyBlog.domain.Util.JwtUtil;
 import com.example.MyBlog.domain.member.DTO.MemberDTO;
 import com.example.MyBlog.domain.member.DTO.JoinDTO;
 import com.example.MyBlog.domain.member.entity.Member;
 import com.example.MyBlog.domain.member.repository.MemberRepository;
+import com.example.MyBlog.domain.post.service.PostService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.DigestUtils;
-
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 @Service
 public class MemberService {
     private final MemberRepository memberRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
+    private final JwtUtil jwtUtil;
+    private final PostService postService;
 
     @Autowired
-    public MemberService(MemberRepository memberRepository, BCryptPasswordEncoder bCryptPasswordEncoder) {
+    public MemberService(MemberRepository memberRepository, BCryptPasswordEncoder bCryptPasswordEncoder, JwtUtil jwtUtil, PostService postService) {
         this.memberRepository = memberRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
+        this.jwtUtil = jwtUtil;
+        this.postService = postService;
     }
 
     private MemberDTO toDTO(Member member) {
@@ -40,10 +44,11 @@ public class MemberService {
         return memberRepository.existsByUsername(inputUserName);
     }
 
-    public MemberDTO join(JoinDTO joinDTO) {
-        if(isDuplicationUsername(joinDTO.getUsername())) {
-            // 유저네임 중복된 경우 null 반환
-            return null;
+    @Transactional
+    public boolean join(JoinDTO joinDTO) {
+        if(isDuplicationUsername(joinDTO.getUsername()) || joinDTO.getAge() <= 0) {
+            // 유저네임 중복된 경우와 Age가 0 이하인 경우 null 반환
+            return false;
         } else {
             Member member = new Member();
             String encodePassword = bCryptPasswordEncoder.encode(joinDTO.getPassword());
@@ -52,15 +57,35 @@ public class MemberService {
             member.setPassword(encodePassword);
             member.setAge(joinDTO.getAge());
             member.setName(joinDTO.getName());
-            Member savedMember = memberRepository.save(member);
-            return toDTO(savedMember);
+            memberRepository.save(member);
+            return true;
         }
     }
 
-//    public void logout()
+
+    // 로그아웃 메소드. 이 메소드를 호출할 때 사용된 jwt 내부의 유저네임을 추출하고, 그 유저네임에 대응하는 리프레쉬토큰을 redis에서 제거
+    // 유저 탈퇴, 유저 업데이트 시에도 호출된다.
+    public boolean logout() {
+        String authUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+        try{
+            jwtUtil.deleteRefresh(authUsername);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 
     @Transactional(readOnly = true)
-    public MemberDTO getMemberById(Long id) {
+    public MemberDTO getMemberByUsername(String username) { // 특정 유저 검색 시 활용
+        Optional<Member> member = memberRepository.findByUsername(username);
+        if(member.isPresent()) {
+            return toDTO(member.get());
+        }
+        return null;
+    }
+
+    @Transactional(readOnly = true)
+    public MemberDTO getMemberById(Long id) { // 자주 조회하는 유저(ex: 본인 등)는 id로 조회하면 좋음.(성능)
         Optional<Member> member = memberRepository.findById(id);
         if(member.isPresent()) {
             return toDTO(member.get());
@@ -69,38 +94,60 @@ public class MemberService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public MemberDTO getMemberByUsernameHash(String username) {
-        // 문자열 유저네임을 MD5 해시로 변환
-        byte[] usernameHash = DigestUtils.md5Digest(username.getBytes(StandardCharsets.UTF_8));
-        Optional<Member> member = memberRepository.findByUsernameHash(usernameHash);
-        if(member.isPresent()) {
-            return toDTO(member.get());
-        } else {
-            return null;
-        }
-    }
 
-    @Transactional
-    public MemberDTO updateMember(JoinDTO joinDTO) {
-        Optional<Member> member = memberRepository.findById(joinDTO.getId());
-        if(isDuplicationUsername(joinDTO.getUsername()) || member.isEmpty()) {
-            // 유저네임 중복된 경우 혹은 회원정보를 찾지 못한경우 null 반환
-            return null;
-        } else {
-            String encodePassword = bCryptPasswordEncoder.encode(joinDTO.getPassword());
+    @Transactional // 비밀번호를 포함한 정보를 넘겨받아야 하기에, JoinDTO로 받는다. 그러나 반환정보에는 비밀번호가 포함되면 안되므로 MemberDTO 반환.
+    public boolean updateMemberById(JoinDTO joinDTO, Long userId) {
+        String authUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        // userId에 해당하는 유저 정보에 JoinDTO에 담긴 정보를 반영하여 부분갱신한다.(PATCH 방식)
+
+        // 유저네임을 수정하는 경우이고, 수정하려는 유저네임이 중복되는 경우에는 false
+        if(joinDTO.getUsername() != null && isDuplicationUsername(joinDTO.getUsername())) {
+            return false;
+        }
+
+        // 인증 정보의 유저네임에 해당하는 유저의 정보만 수정가능
+        Optional<Member> member = memberRepository.findById(userId);
+        if(member.isEmpty()) {
+            return false;
+        } else if (!member.get().getUsername().equals(authUsername)) {
+            // 변경 대상 유저의 식별자로 찾아낸 유저네임과 jwt 토큰의 유저네임이 서로 일치하지 않으면 수정 불가
+            return false;
+        }
+
+        // 전달받은 joinDTO에서 유효한 값이 입력된 필드만 취급하기 위한 조건문 처리
+        if(joinDTO.getUsername() != null) {
             member.get().setUsername(joinDTO.getUsername());
-            member.get().setPassword(encodePassword);
-            member.get().setAge(joinDTO.getAge());
-            member.get().setName(joinDTO.getName());
-            Member updatedMember = memberRepository.save(member.get());
-            return toDTO(updatedMember);
         }
-    }
+        if(joinDTO.getAge() > 0) { member.get().setAge(joinDTO.getAge()); }
+        if(joinDTO.getName() != null) { member.get().setName(joinDTO.getName()); }
+        if(joinDTO.getPassword() != null) {
+            String encodePassword = bCryptPasswordEncoder.encode(joinDTO.getPassword());
+            member.get().setPassword(encodePassword);
+        }
+        memberRepository.save(member.get());
 
-    public boolean deleteMemberById(Long id) {
-        memberRepository.deleteById(id);
+
+        logout();
         return true;
     }
 
+    @Transactional
+    public boolean deleteMemberById(Long userId) {
+        String authUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Optional<Member> member = memberRepository.findById(userId);
+        if(member.isEmpty()) {
+            return false;
+        }
+
+        // 삭제(탈퇴)를 시도한 유저의 jwt의 유저네임 정보와, 식별자로 찾아낸 유저의 유저네임이 같은 경우에만 해당 회원 삭제를 수행
+        if(authUsername.equals(member.get().getUsername())) {
+            memberRepository.deleteById(userId);
+            logout();
+            return true;
+        } else {
+            return false;
+        }
+    }
 }

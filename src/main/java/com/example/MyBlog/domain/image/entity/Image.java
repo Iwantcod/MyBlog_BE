@@ -3,6 +3,7 @@ package com.example.MyBlog.domain.image.entity;
 import com.example.MyBlog.domain.post.entity.Post;
 import jakarta.persistence.*;
 import lombok.Getter;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Getter
@@ -16,9 +17,12 @@ public class Image {
     private Post post;
 
     @Column(nullable = false)
-    private String imageUrl;
+    private String imageUrl; // 이미지 저장 경로
 
-    private String locations;
+//    @Column(nullable = false)
+//    @ColumnDefault("false")
+//    private boolean isDeleted;
+
 
     public void setPost(Post post) {
         this.post = post;
@@ -29,7 +33,4 @@ public class Image {
         this.imageUrl = imageUrl;
     }
 
-    public void setLocation(String locations) {
-        this.locations = locations;
-    }
 }

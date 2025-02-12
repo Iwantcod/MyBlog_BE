@@ -1,5 +1,6 @@
 package com.example.MyBlog.domain.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -12,11 +13,14 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 public class RedisConfig {
     // redis 설정
 
+    @Value("${app.server-host}")
+    private String serverHost;
+
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         // redis 연결 설정
         return new LettuceConnectionFactory(
-                new RedisStandaloneConfiguration("localhost", 6379)
+                new RedisStandaloneConfiguration(serverHost, 6379)
         );
     }
 

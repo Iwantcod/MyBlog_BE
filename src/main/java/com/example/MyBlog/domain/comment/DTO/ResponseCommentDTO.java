@@ -1,4 +1,4 @@
-package com.example.MyBlog.domain.post.DTO;
+package com.example.MyBlog.domain.comment.DTO;
 
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -7,9 +7,9 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class PostDTO {
+public class ResponseCommentDTO {
     private Long id;
-    private String title;
-    private String username; // 작성자 유저네임
+    private Long postId;
     private String content;
+    private String memberUsername;
 }

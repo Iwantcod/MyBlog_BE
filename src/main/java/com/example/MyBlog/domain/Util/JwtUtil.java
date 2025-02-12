@@ -1,6 +1,7 @@
 package com.example.MyBlog.domain.Util;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
@@ -65,9 +66,7 @@ public class JwtUtil {
         String requestValue = redisTemplate.opsForValue().get("refresh:" + username);
         // 클라이언트 요청에 담긴 username을 키로 하여 저장된 uuid 값이 존재하고, 그 uuid값이 Redis에 저장된 값과 동일하다면 true
         if(requestValue != null){
-            if(requestValue.equals(uuid)){
-                return true;
-            }
+            return requestValue.equals(uuid);
         }
         return false;
     }
@@ -80,7 +79,6 @@ public class JwtUtil {
 
     // Access jwt 생성 메소드
     public String createJwt(String username, String role) {
-
         return Jwts.builder()
                 .claim("username", username)
                 .claim("role", role)
@@ -107,6 +105,10 @@ public class JwtUtil {
         // refresh token을 Redis에 저장 (이미 존재하는 키의 값을 사용하여 저장하면 자동으로 덮어쓰기가 된다)
         redisTemplate.opsForValue().set("refresh:" + username, uuid, refreshExpiration, TimeUnit.MILLISECONDS);
         return refreshToken;
+    }
+
+    public void deleteRefresh(String username) {
+        redisTemplate.delete("refresh:" + username);
     }
 
 }

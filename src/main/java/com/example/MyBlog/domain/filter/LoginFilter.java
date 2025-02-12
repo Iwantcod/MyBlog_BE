@@ -3,6 +3,7 @@ package com.example.MyBlog.domain.filter;
 import com.example.MyBlog.domain.Util.JwtUtil;
 import com.example.MyBlog.domain.member.details.JwtUserDetails;
 import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -56,7 +57,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String role = grantedAuthority.getAuthority();
 
         // 최종적으로 얻어낸 정보를 토대로 access, refresh token 생성
-        String access = jwtUtil.createJwt(username, role);
+        String access =  jwtUtil.createJwt(username, role);
         String refresh = jwtUtil.createRefresh(username, role);
 
         // 응답 헤더에 첨부
