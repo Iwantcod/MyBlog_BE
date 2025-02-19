@@ -20,6 +20,9 @@ public class Image {
     private String imageUrl; // 이미지 저장 경로
 
 //    @Column(nullable = false)
+//    private int imageSeq; // 이미지 저장 순서(화면에 표시할 때 사용)
+
+//    @Column(nullable = false)
 //    @ColumnDefault("false")
 //    private boolean isDeleted;
 

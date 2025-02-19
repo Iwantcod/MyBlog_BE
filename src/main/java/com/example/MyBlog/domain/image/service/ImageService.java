@@ -1,17 +1,18 @@
 package com.example.MyBlog.domain.image.service;
 
-import com.example.MyBlog.domain.image.DTO.RequestImageDTO;
 import com.example.MyBlog.domain.image.DTO.ResponseImageDTO;
 import com.example.MyBlog.domain.image.entity.Image;
 import com.example.MyBlog.domain.image.repository.ImageRepository;
 import com.example.MyBlog.domain.post.entity.Post;
 import com.example.MyBlog.domain.post.repository.PostRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,9 +28,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 @Service
+@Slf4j
 public class ImageService {
     private final ImageRepository imageRepository;
     private final PostRepository postRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Value("${app.storage-path}")
     private String storagePath;
@@ -52,6 +57,7 @@ public class ImageService {
     public boolean addImages(List<MultipartFile> fileList, Long postId) throws IOException {
         Optional<Post> post = postRepository.findById(postId);
         if(post.isEmpty()) {
+            log.error("ADD images FAIL: post empty");
             return false;
         }
 
@@ -86,7 +92,7 @@ public class ImageService {
     }
 
     @Transactional(readOnly = true)
-    public List<ResponseImageDTO> getImageByPost(Long postId) throws IOException {
+    public List<ResponseImageDTO> getImageByPost(Long postId) {
         List<Image> images = imageRepository.findAllByPostId(postId);
         // 해당 게시글에 아무런 이미지가 없다면 null
         if(images.isEmpty()){
@@ -104,6 +110,7 @@ public class ImageService {
     public byte[] getImageFile(String imagename) throws IOException {
         File imageFile = new File(storagePath + imagename);
         if(!imageFile.exists()) {
+            log.error("Image file does not exist");
             return null;
         }
         FileInputStream fis = new FileInputStream(imageFile);
@@ -142,8 +149,17 @@ public class ImageService {
 
     @Transactional // 게시글 식별자로 게시글에 소속된 이미지 모두 제거
     public boolean deleteImageByPostId(Long postId) throws IOException {
+        String authUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+        Optional<Post> post = postRepository.findById(postId);
+        if(post.isEmpty()) {
+            return false;
+        }
+        if (!post.get().getMemberUsername().equals(authUsername)) {
+            log.error("DELETE Post FAIL: Authorization information mismatch. post id: {}", postId);
+            return false;
+        }
         // 1. db에서 이미지 저장 위치정보 조회
-        List<Image> images = imageRepository.findAllByPostId(postId);
+        List<Image> images = imageRepository.findAllByPost(post.get());
         if(images.isEmpty()){
             return true;
         }
@@ -164,6 +180,8 @@ public class ImageService {
 
         // 3. db에서 특정 게시글의 이미지 정보 일괄 삭제
         imageRepository.deleteAllByPostId(postId);
+        entityManager.flush(); // Persistence Context에 pending상태로 저장된 변경사항이 실제 DB에 전송되어 반영
+        entityManager.clear(); // 엔티티 매니저가 관리하는 모든 엔티티 인스턴스를 제거 -> DB와 영속성 컨텍스트 사이의 불일치 문제 해결(방지)
         return true;
     }
 

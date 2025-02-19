@@ -34,16 +34,21 @@ public class Post {
     private String content;
 
     @CreationTimestamp // INSERT 쿼리가 발생할 때, 현재 시간을 값으로 채워서 자동으로 쿼리를 생성
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    private int commentsCount = 0; // 댓글 수 카운트
+
+    private int likesCount = 0; // 좋아요 수 카운트
 
 //    @Column(nullable = false)
 //    @ColumnDefault("false")
 //    private boolean isDeleted;
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<Comment> comments = new ArrayList<>();
 
-    @OneToMany(mappedBy = "post", fetch = FetchType.LAZY) // 외부 스토리지를 이용하므로 JPA에게 cascade를 위임하지 않고 직접 로직을 구상하여 사용
+    @OneToMany(mappedBy = "post") // 외부 스토리지를 이용하므로 JPA에게 cascade를 위임하지 않고 직접 로직을 구상하여 사용
     private List<Image> images = new ArrayList<>();
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, orphanRemoval = true)
@@ -63,4 +68,11 @@ public class Post {
         this.content = content;
     }
 
+    public void setCommentsCount(int commentsCount) {
+        this.commentsCount = commentsCount;
+    }
+
+    public void setLikesCount(int likesCount) {
+        this.likesCount = likesCount;
+    }
 }

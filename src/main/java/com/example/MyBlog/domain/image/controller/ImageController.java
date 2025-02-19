@@ -27,7 +27,7 @@ public class ImageController {
 
     // 이미지를 전송받을 때에는 Json 방식을 이용하지 않는다.
     // 쿼리 문자열이 get 방식과는 달리, 메시지의 body로 전송받는다. (ModelAttribute)
-    @PostMapping("/")
+    @PostMapping
     public ResponseEntity<?> uploadImages(@ModelAttribute RequestImageDTO imageDTO) {
         List<MultipartFile> fileList = imageDTO.getFileList();
         Long postId = imageDTO.getPostId();
@@ -64,20 +64,16 @@ public class ImageController {
 
     @GetMapping("/{postId}") // postId를 통한 이미지 경로 조회
     public ResponseEntity<?> getImagePath(@PathVariable Long postId) {
-        try {
-            List<ResponseImageDTO> imageList = imageService.getImageByPost(postId);
-            if(imageList.isEmpty()) {
-                return ResponseEntity.badRequest().body("No image found");
-            } else {
-                return ResponseEntity.ok().body(imageList);
-            }
-
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().body("Server Error to get images by post");
+        List<ResponseImageDTO> imageList = imageService.getImageByPost(postId);
+        if(imageList.isEmpty()) {
+            return ResponseEntity.badRequest().body("No image found");
+        } else {
+            return ResponseEntity.ok().body(imageList);
         }
+
     }
 
-    @DeleteMapping("/") // List<Long>를 통한 복수의 이미지 삭제(게시글 수정 시 사용)
+    @DeleteMapping // List<Long>를 통한 복수의 이미지 삭제(게시글 수정 시 사용)
     public ResponseEntity<?> deleteImage(@RequestBody List<Long> imageIds) {
         try {
             if(imageService.deleteImageById(imageIds)) {

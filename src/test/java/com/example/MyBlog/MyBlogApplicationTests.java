@@ -1,10 +1,15 @@
 package com.example.MyBlog;
 
+import com.example.MyBlog.domain.image.entity.Image;
+import com.example.MyBlog.domain.image.repository.ImageRepository;
 import com.example.MyBlog.domain.image.service.ImageService;
 import com.example.MyBlog.domain.member.DTO.AuthDTO;
 import com.example.MyBlog.domain.member.DTO.JoinDTO;
 import com.example.MyBlog.domain.member.details.JwtUserDetails;
+import com.example.MyBlog.domain.member.entity.Member;
+import com.example.MyBlog.domain.member.repository.MemberRepository;
 import com.example.MyBlog.domain.member.service.MemberService;
+import com.example.MyBlog.domain.post.DTO.RequestAddPostDTO;
 import com.example.MyBlog.domain.post.DTO.ResponsePostDTO;
 import com.example.MyBlog.domain.post.DTO.ResponsePostListDTO;
 import com.example.MyBlog.domain.post.entity.Post;
@@ -18,6 +23,9 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.parameters.P;
+import org.springframework.test.annotation.Rollback;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,6 +36,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
@@ -42,20 +51,36 @@ class MyBlogApplicationTests {
 	private ImageService imageService;
     @Autowired
     private PostRepository postRepository;
+    @Autowired
+    private MemberRepository memberRepository;
+
+	@Autowired
+	private ImageRepository imageRepository;
 
 	@Test
+	@Transactional // 트랜젝션 적용
+	@Rollback(false) // 테스트 코드 이후 롤백하지 않도록 막기
 	void contextLoads() {
+		// 테스트를 위한 인증 정보 추가
+		AuthDTO authDTO = new AuthDTO();
+		authDTO.setUsername("Andy");
+		authDTO.setRoleType("ROLE_USER");
+		authDTO.setPassword("tempPW");
+		JwtUserDetails jwtUserDetails = new JwtUserDetails(authDTO);
+		Authentication authToken = new UsernamePasswordAuthenticationToken(jwtUserDetails, null, jwtUserDetails.getAuthorities());
 
-		postService.getPostById(3L);
+		SecurityContextHolder.getContext().setAuthentication(authToken);
+
+		long postId = 206L;
+		try {
+			imageService.deleteImageByPostId(postId);
+			postService.deletePost(postId);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 
 
-//		AuthDTO authDTO = new AuthDTO();
-//		authDTO.setUsername("Tony");
-//		authDTO.setRoleType("ROLE_USER");
-//		authDTO.setPassword("tempPW");
-//		JwtUserDetails jwtUserDetails = new JwtUserDetails(authDTO);
-//		Authentication authToken = new UsernamePasswordAuthenticationToken(jwtUserDetails, null, jwtUserDetails.getAuthorities());
-//		SecurityContextHolder.getContext().setAuthentication(authToken);
+
 
 //		for (int i = 0; i < 10; i++) {
 //			JoinDTO joinDTO = new JoinDTO();

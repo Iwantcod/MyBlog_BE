@@ -19,12 +19,10 @@ public class ResponsePostDTO {
     private String title;
     private String username; // 작성자 유저네임
     private String content;
-
-    // 날짜 필드 json 직렬화 포멧 지정
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime createdAt;
 
     private List<ResponseImageDTO> images; // image url을 반환
     private List<ResponseCommentDTO> comments;
-    private List<String> likesMemberUsername;
+    private int likesCount;
+    private int commentsCount;
 }

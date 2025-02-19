@@ -14,7 +14,7 @@ public class ResponsePostListDTO {
     private Long postId;
     private String postTitle;
     private String username;
-    // 날짜 필드 json 직렬화 포멧 지정
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     private LocalDateTime createdAt;
+    private int likesCount;
+    private int commentsCount;
 }

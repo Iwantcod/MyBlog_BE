@@ -25,6 +25,7 @@ public class MemberController {
     }
 
 
+    // get user by username
     @GetMapping("/name/{username}")
     public ResponseEntity<MemberDTO> getMemberByUsernameHash(@PathVariable String username) {
         MemberDTO memberDTO = memberService.getMemberByUsername(username);
@@ -35,6 +36,7 @@ public class MemberController {
         }
     }
 
+    // get user by user id
     @GetMapping("/{userId}")
     public ResponseEntity<MemberDTO> getMemberByUserId(@PathVariable Long userId) {
         MemberDTO memberDTO = memberService.getMemberById(userId);
@@ -45,6 +47,7 @@ public class MemberController {
         }
     }
 
+    // logout: remove refresh token at redis.
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         if(memberService.logout()) {
@@ -55,7 +58,8 @@ public class MemberController {
     }
 
 
-    @PatchMapping("/{userId}")
+    // update member
+    @PostMapping("/{userId}")
     public ResponseEntity<?> updateMember(@RequestBody JoinDTO newMemberDTO, @PathVariable Long userId) {
         if(memberService.updateMemberById(newMemberDTO, userId)){
             return ResponseEntity.status(302).header(HttpHeaders.LOCATION, serverUrl+"/").build();
@@ -64,6 +68,7 @@ public class MemberController {
         }
     }
 
+    // delete member
     @DeleteMapping("/{userId}")
     public ResponseEntity<?> deleteMember(@PathVariable Long userId) {
 

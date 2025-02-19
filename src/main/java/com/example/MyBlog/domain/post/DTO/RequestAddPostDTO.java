@@ -12,7 +12,6 @@ import java.util.List;
 @NoArgsConstructor
 public class RequestAddPostDTO {
     private Long memberId;
-//    private String memberUsername;
     private String title;
     private String content;
     private List<MultipartFile> imageList;

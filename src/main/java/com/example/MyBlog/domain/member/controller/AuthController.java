@@ -21,15 +21,17 @@ public class AuthController {
         this.memberService = memberService;
     }
 
+    // 회원가입
     @PostMapping("/join")
     public ResponseEntity<?> join(@RequestBody JoinDTO joinDTO) {
         if (memberService.join(joinDTO)) {
-            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, serverUrl + "/").build();
+            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, serverUrl + "/login").build();
         } else {
             return ResponseEntity.status(401).build();
         }
     }
 
+    // 유저네임 중복확인
     @GetMapping("/check-username/{username}")
     public ResponseEntity<?> checkUsername(@PathVariable String username) {
         if(memberService.isDuplicationUsername(username)) {

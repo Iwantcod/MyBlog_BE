@@ -11,7 +11,6 @@ import java.util.List;
 @Setter
 @NoArgsConstructor
 public class RequestUpdatePostDTO {
-    private Long postId;
     private String title;
     private String content;
     private List<MultipartFile> newImageList;

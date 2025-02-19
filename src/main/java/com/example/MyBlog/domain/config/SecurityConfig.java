@@ -96,8 +96,7 @@ public class SecurityConfig {
                     }
                 }))
                 .authorizeHttpRequests((auth) ->
-                        auth.requestMatchers(HttpMethod.GET, "/**").permitAll() // 모든 GET 요청(조회)은 인증 및 인가 없이 가능
-                                .requestMatchers("/api/auth/**").permitAll() // 인증을 요청하는 api 및 회원가입, 로그인 페이지는 무인가 접근 허용
+                        auth.requestMatchers("/api/auth/**", "/login", "/join").permitAll() // 인증을 요청하는 api 및 회원가입, 로그인 페이지는 무인가 접근 허용
                                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // admin 관련 페이지와 api 요청은 ADMIN만 가능
                                 .anyRequest().authenticated())
                     .formLogin(AbstractHttpConfigurer::disable)

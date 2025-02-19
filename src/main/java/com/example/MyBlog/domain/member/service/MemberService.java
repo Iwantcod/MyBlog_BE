@@ -6,6 +6,7 @@ import com.example.MyBlog.domain.member.DTO.JoinDTO;
 import com.example.MyBlog.domain.member.entity.Member;
 import com.example.MyBlog.domain.member.repository.MemberRepository;
 import com.example.MyBlog.domain.post.service.PostService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class MemberService {
     private final MemberRepository memberRepository;
@@ -48,6 +50,7 @@ public class MemberService {
     public boolean join(JoinDTO joinDTO) {
         if(isDuplicationUsername(joinDTO.getUsername()) || joinDTO.getAge() <= 0) {
             // 유저네임 중복된 경우와 Age가 0 이하인 경우 null 반환
+            log.error("Username already exist or User Age invalid");
             return false;
         } else {
             Member member = new Member();
@@ -58,6 +61,7 @@ public class MemberService {
             member.setAge(joinDTO.getAge());
             member.setName(joinDTO.getName());
             memberRepository.save(member);
+            log.info("JOIN member SUCCESS: Member Username: {}", member.getUsername());
             return true;
         }
     }
@@ -69,8 +73,10 @@ public class MemberService {
         String authUsername = SecurityContextHolder.getContext().getAuthentication().getName();
         try{
             jwtUtil.deleteRefresh(authUsername);
+            log.info("LOGOUT member SUCCESS: Member Username: {}", authUsername);
             return true;
         } catch (Exception e) {
+            log.error("LOGOUT member ERROR: Member Username: {}", authUsername);
             return false;
         }
     }
@@ -81,6 +87,7 @@ public class MemberService {
         if(member.isPresent()) {
             return toDTO(member.get());
         }
+        log.error("GET Member By Username FAIL: {}", username);
         return null;
     }
 
@@ -90,6 +97,7 @@ public class MemberService {
         if(member.isPresent()) {
             return toDTO(member.get());
         } else {
+            log.error("GET Member By Member id FAIL: {}", id);
             return null;
         }
     }
@@ -103,15 +111,18 @@ public class MemberService {
 
         // 유저네임을 수정하는 경우이고, 수정하려는 유저네임이 중복되는 경우에는 false
         if(joinDTO.getUsername() != null && isDuplicationUsername(joinDTO.getUsername())) {
+            log.error("Username already exist or Username is Empty. Username: {}", joinDTO.getUsername());
             return false;
         }
 
         // 인증 정보의 유저네임에 해당하는 유저의 정보만 수정가능
         Optional<Member> member = memberRepository.findById(userId);
         if(member.isEmpty()) {
+            log.error("Member is Empty. Member id: {}", userId);
             return false;
         } else if (!member.get().getUsername().equals(authUsername)) {
             // 변경 대상 유저의 식별자로 찾아낸 유저네임과 jwt 토큰의 유저네임이 서로 일치하지 않으면 수정 불가
+            log.error("Username does not match Auth Information. Username: {}", joinDTO.getUsername());
             return false;
         }
 
@@ -126,8 +137,6 @@ public class MemberService {
             member.get().setPassword(encodePassword);
         }
         memberRepository.save(member.get());
-
-
         logout();
         return true;
     }
@@ -138,6 +147,7 @@ public class MemberService {
 
         Optional<Member> member = memberRepository.findById(userId);
         if(member.isEmpty()) {
+            log.error("Member is Empty. Member id: {}", userId);
             return false;
         }
 
@@ -147,6 +157,7 @@ public class MemberService {
             logout();
             return true;
         } else {
+            log.error("Member id does not match Auth Information. Member id: {}", userId);
             return false;
         }
     }

@@ -1,5 +1,8 @@
 package com.example.MyBlog.domain.post.controller;
 
+import com.example.MyBlog.domain.comment.DTO.ResponseCommentDTO;
+import com.example.MyBlog.domain.comment.service.CommentService;
+import com.example.MyBlog.domain.image.DTO.ResponseImageDTO;
 import com.example.MyBlog.domain.image.service.ImageService;
 import com.example.MyBlog.domain.post.DTO.RequestAddPostDTO;
 import com.example.MyBlog.domain.post.DTO.RequestUpdatePostDTO;
@@ -19,16 +22,19 @@ import java.util.List;
 public class PostController {
     public final PostService postService;
     private final ImageService imageService;
+    private final CommentService commentService;
 
     @Autowired
-    public PostController(PostService postService, ImageService imageService) {
+    public PostController(PostService postService, ImageService imageService, CommentService commentService) {
         this.postService = postService;
         this.imageService = imageService;
+        this.commentService = commentService;
     }
 
 
+    // create post
     // multipart/form-data 요청을 받기 위해 consumes 옵션 설정
-    @PostMapping(value = "/", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> addPost(@ModelAttribute RequestAddPostDTO postDTO) {
         // 1. postDTO 내용을 db에 삽입
         Long postResult = postService.addPost(postDTO); // 삽입 후 게시글 식별자를 반환(Long)
@@ -36,8 +42,11 @@ public class PostController {
         if(postResult != null) {
             if(postDTO.getImageList() != null) {
                 try {
-                    // imageService.addImage는 업로드 성공 여부를 반환(bool)
-                    if(!imageService.addImages(postDTO.getImageList(), postResult)) {
+                    // 이미지 파일은 게시글 당 최대 5개까지만 업로드 가능
+                    if(postDTO.getImageList().size() > 5) {
+                        return ResponseEntity.badRequest().body("Cannot upload more than 5 images");
+                    } else if(!imageService.addImages(postDTO.getImageList(), postResult)) {
+                        // imageService.addImage는 업로드 성공 여부를 반환(bool)
                         return ResponseEntity.badRequest().body("Failed to upload image");
                     }
                 } catch (IOException e){
@@ -45,25 +54,50 @@ public class PostController {
                 }
             }
             // 3. 업로드 완료
-            return ResponseEntity.ok().body("Success to add post");
+            return ResponseEntity.status(201).body("Success to add post");
         } else {
             return ResponseEntity.badRequest().body("Failed to add post");
         }
     }
 
-    @GetMapping("/{postId}") // post 식별자로 게시글 조회
+    // get post by post id
+    @GetMapping("/{postId}") // post 식별자로 게시글 세부 정보 조회(게시글 접속 시 발생)
     public ResponseEntity<?> getPost(@PathVariable Long postId) {
         ResponsePostDTO responsePost = postService.getPostById(postId);
+
         if(responsePost != null) {
+            // 댓글이 존재하는 경우 댓글 조회
+            if(responsePost.getCommentsCount() > 0) {
+                List<ResponseCommentDTO> responseComment = commentService.getCommentsByPostIdPaging(postId, 1);
+                responsePost.setComments(responseComment); // 반환값에 댓글 리스트 추가
+            }
+
+            List<ResponseImageDTO> responseImage = imageService.getImageByPost(postId);
+            // 이미지가 존재하는 경우 이미지 조회
+            if(responseImage != null) {
+                responsePost.setImages(responseImage); // 반환값에 이미지 주소 리스트 추가
+            }
             return ResponseEntity.ok().body(responsePost);
         } else {
             return ResponseEntity.notFound().build();
         }
     }
 
-    @GetMapping("/member/{memberId}") // 특정 회원이 작성한 게시글 모두 조회
-    public ResponseEntity<?> getPostByMemberId(@PathVariable Long memberId) {
-        List<ResponsePostListDTO> responsePostList = postService.getAllPostsByMemberId(memberId);
+    // get 10 posts by member id paging
+    @GetMapping("/member/{memberId}/{startOffset}") // 특정 회원이 작성한 게시글 모두 조회
+    public ResponseEntity<?> getPostByMemberId(@PathVariable Long memberId, @PathVariable Integer startOffset) {
+        List<ResponsePostListDTO> responsePostList = postService.getAllPostsByMemberId(memberId, startOffset);
+        if(responsePostList != null) {
+            return ResponseEntity.ok().body(responsePostList);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // get 10 posts paging
+    @GetMapping("/list/{startOffset}") // 최신순 게시글 10개 조회(페이징)
+    public ResponseEntity<?> getPostListPaging(@PathVariable Integer startOffset) {
+        List<ResponsePostListDTO> responsePostList = postService.getPostListPaging(startOffset);
         if(responsePostList != null) {
             return ResponseEntity.ok().body(responsePostList);
         } else {
@@ -72,11 +106,12 @@ public class PostController {
     }
 
 
-
-    @PatchMapping(value = "/", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> updatePost(@ModelAttribute RequestUpdatePostDTO postDTO) {
+    // Multipart 전송을 위해 PATCH가 아닌 POST 혹은 PUT을 사용해야 하는데, POST 선택'
+    // Multipart 데이터 전송은 POST에 최적화되어있다.
+    @PostMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> updatePost(@ModelAttribute RequestUpdatePostDTO postDTO, @PathVariable Long postId) {
         //1. 프론트로부터 넘겨받은 새로운 ‘제목’, ‘본문’ 정보를 post 테이블에 업데이트한다. 이 업데이트 성공 시 이후 내용을 수행
-        if(postService.updatePost(postDTO.getPostId(), postDTO.getTitle(), postDTO.getContent())) {
+        if(postService.updatePost(postId, postDTO.getTitle(), postDTO.getContent())) {
             // 게시글에서 제거할 이미지가 있는 경우 이미지 제거작업
             if(postDTO.getDeletedImageIdList() != null) {
                 //2. 제거되는 이미지들의 식별자를 리스트로 넘겨받고, imageService를 이용하여 스토리지에서 이미지 제거하고 image 테이블에서 제거한다.
@@ -97,7 +132,10 @@ public class PostController {
                 //3. 새롭게 추가되는 이미지를 리스트를 통해 넘겨받고, imageService를 이용하여 스토리지에 저장 및 image 테이블에 추가(저장 경로)한다.
                 // IOException 예외처리
                 try{
-                    if(!imageService.addImages(postDTO.getNewImageList(), postDTO.getPostId())) {
+                    // 이미지 파일은 게시글 당 최대 5개까지만 업로드 가능
+                    if(imageService.getImageByPost(postId).size() > 5) {
+                        return ResponseEntity.badRequest().body("Cannot upload more than 5 images");
+                    } else if(!imageService.addImages(postDTO.getNewImageList(), postId)) {
                         // 추가에 실패할 경우 다음을 반환
                         return ResponseEntity.badRequest().body("Failed to upload image - update");
                     }
@@ -114,12 +152,16 @@ public class PostController {
     }
 
 
+    // delete post by post id
     @DeleteMapping("/{postId}")
     public ResponseEntity<?> deletePost(@PathVariable Long postId) {
         try {
-            if(postService.deletePost(postId) && imageService.deleteImageByPostId(postId)) {
-                // 이미지도 모두 삭제
-                return ResponseEntity.ok().build();
+            // 이미지 먼저 삭제
+            if(imageService.deleteImageByPostId(postId)) {
+                System.out.println("Start delete Post!!!!!!!!!!!!");
+                if(postService.deletePost(postId)) {
+                    return ResponseEntity.ok().build();
+                }
             }
         } catch (IOException e) {
             return ResponseEntity.internalServerError().body("Server Error to delete post");
