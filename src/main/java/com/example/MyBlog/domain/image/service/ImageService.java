@@ -87,6 +87,10 @@ public class ImageService {
             image.setImageUrl(newFileName);
             image.setPost(post.get());
             imageRepository.save(image);
+            // 게시글의 이미지 카운트 1 증가
+            post.get().setImagesCount(post.get().getImagesCount() + 1);
+            postRepository.save(post.get());
+
         }
         return true;
     }
@@ -107,6 +111,7 @@ public class ImageService {
         return result;
     }
 
+    @Transactional(readOnly = true)
     public byte[] getImageFile(String imagename) throws IOException {
         File imageFile = new File(storagePath + imagename);
         if(!imageFile.exists()) {
@@ -119,9 +124,13 @@ public class ImageService {
     }
 
 
-    @Transactional // 이미지 식별자로 이미지 제거
-    public boolean deleteImageById(List<Long> imageIds) throws IOException {
-
+    @Transactional // 이미지 식별자로 이미지 제거(게시글 수정 시 사용)
+    public boolean deleteImageById(List<Long> imageIds, Long postId) throws IOException {
+        Optional<Post> post = postRepository.findById(postId);
+        if(post.isEmpty()) {
+            log.error("DELETE images FAIL: post empty");
+            return false;
+        }
         for (Long imageId : imageIds) {
             // 1. db에서 이미지 저장 위치정보 조회
             Optional<Image> image = imageRepository.findById(imageId);
@@ -140,10 +149,12 @@ public class ImageService {
                     return false;
                 }
             }
-
             // 3. db에서 이미지 정보 삭제
             imageRepository.deleteById(imageId);
+            // 게시글의 이미지 카운트 1 감소
+            post.get().setImagesCount(post.get().getImagesCount() - 1);
         }
+        postRepository.save(post.get()); // 변경된 이미지 카운트 수 반영
         return true;
     }
 
@@ -154,10 +165,11 @@ public class ImageService {
         if(post.isEmpty()) {
             return false;
         }
-        if (!post.get().getMemberUsername().equals(authUsername)) {
+        if (!authUsername.equals(post.get().getMember().getUsername())) {
             log.error("DELETE Post FAIL: Authorization information mismatch. post id: {}", postId);
             return false;
         }
+        System.out.println("이미지 제거 시작!!");
         // 1. db에서 이미지 저장 위치정보 조회
         List<Image> images = imageRepository.findAllByPost(post.get());
         if(images.isEmpty()){

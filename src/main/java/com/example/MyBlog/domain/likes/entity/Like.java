@@ -4,6 +4,9 @@ import com.example.MyBlog.domain.member.entity.Member;
 import com.example.MyBlog.domain.post.entity.Post;
 import jakarta.persistence.*;
 import lombok.Getter;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -22,6 +25,10 @@ public class Like {
 
     private String memberUsername;
 
+    @CreationTimestamp // INSERT 쿼리가 발생할 때, 현재 시간을 값으로 채워서 자동으로 쿼리를 생성
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
 
     public void setPost(Post post) {
         this.post = post;
@@ -33,5 +40,4 @@ public class Like {
         this.memberUsername = member.getUsername();
         member.getLikes().add(this);
     }
-
 }

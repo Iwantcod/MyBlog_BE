@@ -73,10 +73,10 @@ public class ImageController {
 
     }
 
-    @DeleteMapping // List<Long>를 통한 복수의 이미지 삭제(게시글 수정 시 사용)
-    public ResponseEntity<?> deleteImage(@RequestBody List<Long> imageIds) {
+    @DeleteMapping // List<Long>를 통한 복수의 이미지 삭제
+    public ResponseEntity<?> deleteImage(@RequestBody List<Long> imageIds, @PathVariable Long postId) {
         try {
-            if(imageService.deleteImageById(imageIds)) {
+            if(imageService.deleteImageById(imageIds, postId)) {
                 return ResponseEntity.ok().body("Success to delete image");
             } else {
                 return ResponseEntity.badRequest().body("Failed to delete image");

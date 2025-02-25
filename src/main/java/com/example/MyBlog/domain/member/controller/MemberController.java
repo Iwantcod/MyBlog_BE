@@ -59,7 +59,7 @@ public class MemberController {
 
 
     // update member
-    @PostMapping("/{userId}")
+    @PatchMapping("/{userId}")
     public ResponseEntity<?> updateMember(@RequestBody JoinDTO newMemberDTO, @PathVariable Long userId) {
         if(memberService.updateMemberById(newMemberDTO, userId)){
             return ResponseEntity.status(302).header(HttpHeaders.LOCATION, serverUrl+"/").build();

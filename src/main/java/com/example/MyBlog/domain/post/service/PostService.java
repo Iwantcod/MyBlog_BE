@@ -1,14 +1,10 @@
 package com.example.MyBlog.domain.post.service;
 
-import com.example.MyBlog.domain.comment.DTO.ResponseCommentDTO;
-import com.example.MyBlog.domain.comment.entity.Comment;
-import com.example.MyBlog.domain.image.DTO.ResponseImageDTO;
-import com.example.MyBlog.domain.image.entity.Image;
+import com.example.MyBlog.domain.likes.DTO.ResponseLikesDTO;
 import com.example.MyBlog.domain.member.entity.Member;
 import com.example.MyBlog.domain.member.repository.MemberRepository;
 import com.example.MyBlog.domain.post.DTO.RequestAddPostDTO;
 import com.example.MyBlog.domain.post.DTO.ResponsePostDTO;
-import com.example.MyBlog.domain.post.DTO.ResponsePostListDTO;
 import com.example.MyBlog.domain.post.entity.Post;
 import com.example.MyBlog.domain.post.repository.PostRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +17,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -41,32 +36,41 @@ public class PostService {
         ResponsePostDTO responsePostDTO = new ResponsePostDTO();
         // 게시글의 기본정보(게시글 식별자, 작성자명, 좋아요 수) 및 제목과 본문 정보를 변환한다.
         responsePostDTO.setId(post.getId());
+        responsePostDTO.setMemberId(post.getMember().getId()); // 작성자 회원 식별자
         responsePostDTO.setUsername(post.getMemberUsername());
         responsePostDTO.setTitle(post.getTitle());
-        responsePostDTO.setContent(post.getContent());
         responsePostDTO.setLikesCount(post.getLikesCount()); // 좋아요 누른 유저정보는 LAZY하게 조회
         responsePostDTO.setCommentsCount(post.getCommentsCount());
-
         responsePostDTO.setCreatedAt(post.getCreatedAt());
+        responsePostDTO.setImagesCount(post.getImagesCount());
         return responsePostDTO;
     }
 
     // 게시글 식별자로 게시글 조회
     @Transactional(readOnly = true)
-    public ResponsePostDTO getPostById(Long id) {
-        Optional<Post> post = postRepository.findById(id);
-        if (post.isPresent()) {
-            return toDTO(post.get());
+    public List<ResponsePostDTO> getPostById(List<Long> postIds) {
+        List<ResponsePostDTO> responsePostDTOList = new ArrayList<>();
+        for (Long postId : postIds) {
+            Optional<Post> post = postRepository.findById(postId);
+            if (post.isPresent()) {
+                responsePostDTOList.add(toDTO(post.get()));
+            }
+        }
+
+        if (responsePostDTOList != null) {
+            return responsePostDTOList;
         } else {
-            log.error("GET Post FAIL: Cannot find Post. post id: {}", id);
+            log.error("GET Post FAIL: Cannot find Posts.");
             return null;
         }
     }
 
+
+
     // 회원 식별자로 해당 회원이 작성한 모든 게시글 정보 조회
     // 게시글의 세부 내용은 클릭 시에만 확인할 수 있으므로, 작성자명과 제목, 작성일자 등의 간단한 정보만 표시
     @Transactional(readOnly = true)
-    public List<ResponsePostListDTO> getAllPostsByMemberId(Long memberId, Integer startOffset) {
+    public List<ResponsePostDTO> getAllPostsByMemberId(Long memberId, Integer startOffset) {
         // 프론트로부터 1,2,3,4... 의 값을 받는다. 이 값에 10을 곱한 값이 조회 시작지점이다.
         int pageSize = 10;
 
@@ -79,22 +83,14 @@ public class PostService {
             return null;
         }
 
-        Page<ResponsePostListDTO> dtoPage = posts.map(post -> {
-            ResponsePostListDTO responsePostListDTO = new ResponsePostListDTO();
-            responsePostListDTO.setPostId(post.getId());
-            responsePostListDTO.setUsername(post.getMemberUsername());
-            responsePostListDTO.setPostTitle(post.getTitle());
-            responsePostListDTO.setCreatedAt(post.getCreatedAt());
-            responsePostListDTO.setLikesCount(post.getLikesCount());
-            responsePostListDTO.setCommentsCount(post.getCommentsCount());
-            return responsePostListDTO;
-        });
+        Page<ResponsePostDTO> dtoPage = posts.map(this::toDTO);
         log.info("GET Post SUCCESS By Member ID: {}.", memberId);
         return dtoPage.getContent();
     }
 
-    @Transactional(readOnly = true)
-    public List<ResponsePostListDTO> getPostListPaging(Integer startOffset) {
+
+    @Transactional(readOnly = true) // 최신순 게시글 조회
+    public List<ResponsePostDTO> getPostListPaging(Integer startOffset) {
         // 프론트로부터 1,2,3,4... 의 값을 받는다. 이 값에 10을 곱한 값이 조회 시작지점이다.
         int pageSize = 10;
 
@@ -107,16 +103,7 @@ public class PostService {
             return null;
         }
 
-        Page<ResponsePostListDTO> dtoPage = posts.map(post -> {
-            ResponsePostListDTO responsePostListDTO = new ResponsePostListDTO();
-            responsePostListDTO.setPostId(post.getId());
-            responsePostListDTO.setUsername(post.getMemberUsername());
-            responsePostListDTO.setPostTitle(post.getTitle());
-            responsePostListDTO.setCreatedAt(post.getCreatedAt());
-            responsePostListDTO.setLikesCount(post.getLikesCount());
-            responsePostListDTO.setCommentsCount(post.getCommentsCount());
-            return responsePostListDTO;
-        });
+        Page<ResponsePostDTO> dtoPage = posts.map(this::toDTO);
         log.info("GET Post SUCCESS.");
         return dtoPage.getContent(); // Page 객체의 메타데이터 없이 본문 데이터만 반환
     }
@@ -152,8 +139,8 @@ public class PostService {
             return false;
         }
 
-        // 토큰에 담긴 유저정보와 PostDTO에 담긴 유저네임 정보가 일치하지 않으면 수정 불가능
-        if(!authUsername.equals(post.get().getMemberUsername())) {
+        // 토큰에 담긴 유저정보와 인자로 받은 회원 식별자로 조회한 유저네임 정보가 일치하지 않으면 수정 불가능
+        if(!authUsername.equals(post.get().getMember().getUsername())) {
             log.error("UPDATE Post FAIL: Authorization information mismatch. post id: {}", postId);
             return false;
         }
@@ -179,8 +166,8 @@ public class PostService {
             log.error("DELETE Post FAIL: Post Empty. id: {}", id);
             return false;
         }
-        if(!post.get().getMemberUsername().equals(authUsername)) {
-            // 해당 게시글의 작성자 유저네임과, 토큰 상의 유저네임이 같지 않으면 제거 불가
+        if(!authUsername.equals(post.get().getMember().getUsername())) {
+            // 해당 게시글의 작성자의 식별자를 통해 조회한 유저네임과, 토큰 상의 유저네임이 같지 않으면 제거 불가
             log.error("DELETE Post FAIL: Authorization information mismatch. post id: {}", id);
             return false;
         }

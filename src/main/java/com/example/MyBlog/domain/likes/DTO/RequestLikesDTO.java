@@ -4,15 +4,11 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-
-@Getter
 @Setter
+@Getter
 @NoArgsConstructor
-public class ResponseLikesDTO {
+public class RequestLikesDTO {
     private Long id;
-    private Long memberId;
-    private String memberUsername;
     private Long postId;
-    private LocalDateTime createdAt;
+    private Long memberId;
 }

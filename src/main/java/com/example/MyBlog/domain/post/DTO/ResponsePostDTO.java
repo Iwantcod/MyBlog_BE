@@ -16,13 +16,13 @@ import java.util.List;
 @NoArgsConstructor
 public class ResponsePostDTO {
     private Long id;
+    private Long memberId;
     private String title;
     private String username; // 작성자 유저네임
-    private String content;
     private LocalDateTime createdAt;
 
     private List<ResponseImageDTO> images; // image url을 반환
-    private List<ResponseCommentDTO> comments;
     private int likesCount;
     private int commentsCount;
+    private int imagesCount;
 }

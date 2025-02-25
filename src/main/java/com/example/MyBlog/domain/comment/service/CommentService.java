@@ -38,6 +38,7 @@ public class CommentService {
     private ResponseCommentDTO toDTO(Comment comment) {
         ResponseCommentDTO responseCommentDTO = new ResponseCommentDTO();
         responseCommentDTO.setId(comment.getId());
+        responseCommentDTO.setMemberId(comment.getMember().getId());
         responseCommentDTO.setMemberUsername(comment.getMemberUsername());
         responseCommentDTO.setPostId(comment.getPost().getId()); // post 조회
         responseCommentDTO.setParentCommentId(comment.getParentComment().getId()); // comment 조회
@@ -123,6 +124,7 @@ public class CommentService {
 
             if(!comment.isDeleted()) {
                 // 삭제된 댓글이 아닌 경우에만 추가적인 세부 정보를 반환
+                responseCommentDTO.setMemberId(comment.getMember().getId());
                 responseCommentDTO.setMemberUsername(comment.getMemberUsername());
                 responseCommentDTO.setContent(comment.getContent());
                 responseCommentDTO.setCreatedAt(comment.getCreatedAt());

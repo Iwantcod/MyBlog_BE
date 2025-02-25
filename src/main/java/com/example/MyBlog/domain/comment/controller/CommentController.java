@@ -21,7 +21,7 @@ public class CommentController {
     @GetMapping("/{postId}/{startOffset}")
     public ResponseEntity<?> getCommentByPostIdPaging(@PathVariable Long postId, @PathVariable Integer startOffset) {
         List<ResponseCommentDTO> commentList = commentService.getCommentsByPostIdPaging(postId, startOffset);
-        if (commentList.isEmpty()) {
+        if (commentList == null) {
             return ResponseEntity.status(404).body("Cannot Found Comments");
         } else {
             return ResponseEntity.ok(commentList);

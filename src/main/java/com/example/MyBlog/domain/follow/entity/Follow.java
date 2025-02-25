@@ -10,6 +10,7 @@ import lombok.Getter;
 public class Follow {
     @Id @GeneratedValue @Column(name = "FOLLOW_ID")
     private Long id;
+    // member가 target을 팔로우하는 관계를 표현
     @JoinColumn(name = "member_id", nullable = false)
     @ManyToOne(fetch = FetchType.LAZY)
     private Member member;

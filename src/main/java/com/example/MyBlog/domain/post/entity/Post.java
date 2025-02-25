@@ -41,6 +41,8 @@ public class Post {
 
     private int likesCount = 0; // 좋아요 수 카운트
 
+    private int imagesCount = 0; // 이미지 수 카운트: 0이면 Image 테이블 조회를 하지 않는다.
+
 //    @Column(nullable = false)
 //    @ColumnDefault("false")
 //    private boolean isDeleted;
@@ -68,9 +70,9 @@ public class Post {
         this.content = content;
     }
 
-    public void setCommentsCount(int commentsCount) {
-        this.commentsCount = commentsCount;
-    }
+    public void setCommentsCount(int commentsCount) { this.commentsCount = commentsCount; }
+
+    public void setImagesCount(int imagesCount) { this.imagesCount = imagesCount; }
 
     public void setLikesCount(int likesCount) {
         this.likesCount = likesCount;

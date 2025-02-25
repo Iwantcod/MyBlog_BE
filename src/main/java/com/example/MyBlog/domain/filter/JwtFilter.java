@@ -6,6 +6,7 @@ import com.example.MyBlog.domain.member.details.JwtUserDetails;
 import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -26,59 +27,38 @@ public class JwtFilter extends OncePerRequestFilter {
     }
 
 
-    @Override
+    @Override // Access Token 검증. Refresh Token 검증은 별도의 API 요청을 통해 이루어짐.
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException, ExpiredJwtException {
-        // request 헤더에서 "Authorization" 키의 값(JWT)을 찾는다.
-        String authorization = request.getHeader("Authorization");
-        String refreshToken = request.getHeader("Refresh");
 
-        // 키의 값이 존재하고, 해당 키의 값이 "Bearer "로 시작하면(공백 포함) JWT를 가지고 있다는 의미이다.
-
-        // Refresh Token 값이 존재하고, "Refresh "로 시작하는 경우
-        if(refreshToken != null && refreshToken.startsWith("Refresh ")) {
-            // 실제 토큰 부분 추출
-            String token = refreshToken.split(" ")[1];
-            String username = jwtUtil.getUsername(token);
-            String role = jwtUtil.getRole(token);
-            String uuid = jwtUtil.getId(token);
-
-            // 만료 여부 검증
-            if(jwtUtil.isExistRefresh(username, uuid)) {
-                String access = jwtUtil.createJwt(username, role);
-                String refresh = jwtUtil.createRefresh(username, role);
-
-                response.addHeader("Authorization", "Bearer " + access);
-                response.addHeader("Refresh", "Refresh " + refresh);
-
-                setAuthentication(token);
-                filterChain.doFilter(request, response);
-                return;
-            } else {
-                filterChain.doFilter(request, response);
-                return;
+        String accessToken = null;
+        // 요청에 포함된 쿠키를 확인
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("access_token".equals(cookie.getName())) {
+                    accessToken = cookie.getValue();
+                    break;
+                }
             }
         }
 
-        // 키의 값이 존재하지 않거나(최초 로그인 시) 값이 "Bearer " 혹은 "Refresh "로 시작하지 않는 경우는 잘못된 값이다.
-        if(authorization == null || !authorization.startsWith("Bearer ")) {
-            System.out.println("token null");
+        // access token이 없으면 다음 필터로 넘김
+        if (accessToken == null) {
             filterChain.doFilter(request, response);
-            return; // 이 조건이 맞으면 메소드 종료(break) - 이것은 필수로 해줘야 한다.
+            return;
+        }
+
+        // 엑세스 토큰 검증
+        if (jwtUtil.isExpired(accessToken)) {
+            // 만약 access token이 만료되었다면, refresh token을 이용하여 새로운 토큰 발급 로직이 필요
+            // 이 부분은 별도의 리프레시 로직(예: /api/auth/refresh)을 구현하여 처리
+            filterChain.doFilter(request, response);
+            return;
         }
 
         System.out.println("authorization now");
 
-        String token = authorization.split(" ")[1]; // JWT에 해당하는 부분만 따로 가져온다.
-
-        // 토큰이 만료된 경우
-        if(jwtUtil.isExpired(token)) {
-            System.out.println("Access Token Expired");
-            filterChain.doFilter(request, response);
-            return; // 이 조건이 맞으면 메소드 종료(break) - 이것은 필수로 해줘야 한다.
-        }
-
         // 예외사항에 해당되지 않으면 아래를 실행
-        setAuthentication(token);
+        setAuthentication(accessToken);
         filterChain.doFilter(request, response);
     }
 

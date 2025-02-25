@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 public class ResponseCommentDTO {
     private Long id;
     private Long postId;
+    private Long memberId;
     private String memberUsername;
     private Long parentCommentId;
     private int depth;

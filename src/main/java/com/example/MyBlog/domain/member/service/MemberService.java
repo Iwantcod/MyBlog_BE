@@ -20,14 +20,12 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final JwtUtil jwtUtil;
-    private final PostService postService;
 
     @Autowired
-    public MemberService(MemberRepository memberRepository, BCryptPasswordEncoder bCryptPasswordEncoder, JwtUtil jwtUtil, PostService postService) {
+    public MemberService(MemberRepository memberRepository, BCryptPasswordEncoder bCryptPasswordEncoder, JwtUtil jwtUtil) {
         this.memberRepository = memberRepository;
         this.bCryptPasswordEncoder = bCryptPasswordEncoder;
         this.jwtUtil = jwtUtil;
-        this.postService = postService;
     }
 
     private MemberDTO toDTO(Member member) {
@@ -129,6 +127,7 @@ public class MemberService {
         // 전달받은 joinDTO에서 유효한 값이 입력된 필드만 취급하기 위한 조건문 처리
         if(joinDTO.getUsername() != null) {
             member.get().setUsername(joinDTO.getUsername());
+
         }
         if(joinDTO.getAge() > 0) { member.get().setAge(joinDTO.getAge()); }
         if(joinDTO.getName() != null) { member.get().setName(joinDTO.getName()); }

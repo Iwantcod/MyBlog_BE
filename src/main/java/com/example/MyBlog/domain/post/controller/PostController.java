@@ -1,13 +1,11 @@
 package com.example.MyBlog.domain.post.controller;
 
-import com.example.MyBlog.domain.comment.DTO.ResponseCommentDTO;
-import com.example.MyBlog.domain.comment.service.CommentService;
 import com.example.MyBlog.domain.image.DTO.ResponseImageDTO;
 import com.example.MyBlog.domain.image.service.ImageService;
+import com.example.MyBlog.domain.likes.service.LikesService;
 import com.example.MyBlog.domain.post.DTO.RequestAddPostDTO;
 import com.example.MyBlog.domain.post.DTO.RequestUpdatePostDTO;
 import com.example.MyBlog.domain.post.DTO.ResponsePostDTO;
-import com.example.MyBlog.domain.post.DTO.ResponsePostListDTO;
 import com.example.MyBlog.domain.post.service.PostService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -22,13 +20,13 @@ import java.util.List;
 public class PostController {
     public final PostService postService;
     private final ImageService imageService;
-    private final CommentService commentService;
+    private final LikesService likesService;
 
     @Autowired
-    public PostController(PostService postService, ImageService imageService, CommentService commentService) {
+    public PostController(PostService postService, ImageService imageService, LikesService likesService) {
         this.postService = postService;
         this.imageService = imageService;
-        this.commentService = commentService;
+        this.likesService = likesService;
     }
 
 
@@ -60,34 +58,45 @@ public class PostController {
         }
     }
 
-    // get post by post id
-    @GetMapping("/{postId}") // post 식별자로 게시글 세부 정보 조회(게시글 접속 시 발생)
-    public ResponseEntity<?> getPost(@PathVariable Long postId) {
-        ResponsePostDTO responsePost = postService.getPostById(postId);
+    // 게시글 식별자 목록을 받아서 조회
+    // 활용 1: 특정 유저가 좋아요 누른 게시글 정보 조회(PostController)
+        // 1. 로그인 성공 시 해당 회원이 좋아요 누른 모든 게시글의 식별자를 클라이언트로 반환, 클라이언트는 이를 보관
+        // 2. 클라이언트에서 보관한 게시글 식별자 배열에서 10개씩 서버로 조회 요청
+        // 3. PostService: 조회 결과에서 게시글 식별자를 뽑아내서 게시글 10개 조회(10번의 쿼리 발생)
+        // 4. PostController: 조회된 게시글 10개의 정보를 클라이언트로 반환
+    @GetMapping // 예시: GET /api/post?targets=1,2,3
+    public ResponseEntity<?> getPost(@RequestParam List<Long> targets) {
+        List<ResponsePostDTO> responsePostList = postService.getPostById(targets);
 
-        if(responsePost != null) {
-            // 댓글이 존재하는 경우 댓글 조회
-            if(responsePost.getCommentsCount() > 0) {
-                List<ResponseCommentDTO> responseComment = commentService.getCommentsByPostIdPaging(postId, 1);
-                responsePost.setComments(responseComment); // 반환값에 댓글 리스트 추가
+        for (ResponsePostDTO responsePostDTO : responsePostList) {
+            if(responsePostDTO.getImagesCount() > 0) {
+                List<ResponseImageDTO> responseImage = imageService.getImageByPost(responsePostDTO.getId());
+                if(responseImage != null) {
+                    responsePostDTO.setImages(responseImage); // 반환값에 이미지 주소 리스트 추가
+                }
             }
+        }
 
-            List<ResponseImageDTO> responseImage = imageService.getImageByPost(postId);
-            // 이미지가 존재하는 경우 이미지 조회
-            if(responseImage != null) {
-                responsePost.setImages(responseImage); // 반환값에 이미지 주소 리스트 추가
-            }
-            return ResponseEntity.ok().body(responsePost);
+        if(responsePostList != null) {
+            return ResponseEntity.ok().body(responsePostList);
         } else {
             return ResponseEntity.notFound().build();
         }
     }
 
     // get 10 posts by member id paging
-    @GetMapping("/member/{memberId}/{startOffset}") // 특정 회원이 작성한 게시글 모두 조회
+    @GetMapping("/own/{memberId}/{startOffset}") // 특정 회원이 작성한 게시글 모두 조회
     public ResponseEntity<?> getPostByMemberId(@PathVariable Long memberId, @PathVariable Integer startOffset) {
-        List<ResponsePostListDTO> responsePostList = postService.getAllPostsByMemberId(memberId, startOffset);
+        List<ResponsePostDTO> responsePostList = postService.getAllPostsByMemberId(memberId, startOffset);
         if(responsePostList != null) {
+            for (ResponsePostDTO responsePostDTO : responsePostList) {
+                if(responsePostDTO.getImagesCount() > 0) { // 게시글의 이미지 카운트가 0보다 크다면 해당 게시글에 이미지 추가해서 반환
+                    List<ResponseImageDTO> responseImage = imageService.getImageByPost(responsePostDTO.getId());
+                    if(responseImage != null) {
+                        responsePostDTO.setImages(responseImage);
+                    }
+                }
+            }
             return ResponseEntity.ok().body(responsePostList);
         } else {
             return ResponseEntity.notFound().build();
@@ -95,15 +104,24 @@ public class PostController {
     }
 
     // get 10 posts paging
-    @GetMapping("/list/{startOffset}") // 최신순 게시글 10개 조회(페이징)
+    @GetMapping("/recent/{startOffset}") // 최신순 게시글 10개 조회(페이징)
     public ResponseEntity<?> getPostListPaging(@PathVariable Integer startOffset) {
-        List<ResponsePostListDTO> responsePostList = postService.getPostListPaging(startOffset);
+        List<ResponsePostDTO> responsePostList = postService.getPostListPaging(startOffset);
         if(responsePostList != null) {
+            for (ResponsePostDTO responsePostDTO : responsePostList) {
+                if(responsePostDTO.getImagesCount() > 0) { // 게시글의 이미지 카운트가 0보다 크다면 해당 게시글에 이미지 추가해서 반환
+                    List<ResponseImageDTO> responseImage = imageService.getImageByPost(responsePostDTO.getId());
+                    if(responseImage != null) {
+                        responsePostDTO.setImages(responseImage);
+                    }
+                }
+            }
             return ResponseEntity.ok().body(responsePostList);
         } else {
             return ResponseEntity.notFound().build();
         }
     }
+
 
 
     // Multipart 전송을 위해 PATCH가 아닌 POST 혹은 PUT을 사용해야 하는데, POST 선택'
@@ -117,7 +135,7 @@ public class PostController {
                 //2. 제거되는 이미지들의 식별자를 리스트로 넘겨받고, imageService를 이용하여 스토리지에서 이미지 제거하고 image 테이블에서 제거한다.
                 // IOException 예외처리
                 try {
-                    if(!imageService.deleteImageById(postDTO.getDeletedImageIdList())) {
+                    if(!imageService.deleteImageById(postDTO.getDeletedImageIdList(), postId)) {
                         // 제거에 실패할 경우 다음을 반환
                         return ResponseEntity.badRequest().body("Failed to delete image - update");
                     }
@@ -158,7 +176,6 @@ public class PostController {
         try {
             // 이미지 먼저 삭제
             if(imageService.deleteImageByPostId(postId)) {
-                System.out.println("Start delete Post!!!!!!!!!!!!");
                 if(postService.deletePost(postId)) {
                     return ResponseEntity.ok().build();
                 }

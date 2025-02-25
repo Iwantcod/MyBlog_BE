@@ -57,12 +57,12 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         String role = grantedAuthority.getAuthority();
 
         // 최종적으로 얻어낸 정보를 토대로 access, refresh token 생성
-        String access =  jwtUtil.createJwt(username, role);
-        String refresh = jwtUtil.createRefresh(username, role);
+        Cookie accessCookie =  jwtUtil.createJwt(username, role);
+        Cookie refreshCookie = jwtUtil.createRefresh(username, role);
 
-        // 응답 헤더에 첨부
-        res.addHeader("Authorization", "Bearer " + access);
-        res.addHeader("Refresh", "Refresh " + refresh);
+        // 응답에 쿠키 추가
+        res.addCookie(accessCookie);
+        res.addCookie(refreshCookie);
     }
 
 

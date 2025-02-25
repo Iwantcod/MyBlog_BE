@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(indexes = @Index(name = "idx_member_username", columnList = "USERNAME"))
+@Table(indexes = @Index(name = "idx_member_id", columnList = "MEMBER_ID"))
 @Getter
 public class Member {
     @Id @GeneratedValue @Column(name = "MEMBER_ID")
@@ -34,6 +34,10 @@ public class Member {
 
     @Column(nullable = false, unique = true, name = "USERNAME")
     private String username; // 아이디 역할
+
+    private int followersCnt = 0;
+
+    private int followingCnt = 0;
 
     @OneToMany(mappedBy = "member")
     private List<Post> posts = new ArrayList<>();
@@ -64,6 +68,14 @@ public class Member {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public void setFollowersCnt(int followersCnt) {
+        this.followersCnt = followersCnt;
+    }
+
+    public void setFollowingCnt(int followingCnt) {
+        this.followingCnt = followingCnt;
     }
 
     public void setRoleType(RoleType roleType) {

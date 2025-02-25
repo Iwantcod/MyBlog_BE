@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import jakarta.servlet.http.Cookie;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -78,8 +79,8 @@ public class JwtUtil {
 
 
     // Access jwt 생성 메소드
-    public String createJwt(String username, String role) {
-        return Jwts.builder()
+    public Cookie createJwt(String username, String role) {
+        String access = Jwts.builder()
                 .claim("username", username)
                 .claim("role", role)
                 .setId(UUID.randomUUID().toString()) // uuid를 사용하여 jwt의 식별자를 부여
@@ -87,11 +88,17 @@ public class JwtUtil {
                 .setExpiration((new Date(System.currentTimeMillis() + expiration))) // 만료 시간
                 .signWith(secretKey, SignatureAlgorithm.HS256) // 암호화 키
                 .compact(); // JWT 문자열로 반환
+
+        Cookie accessCookie = new Cookie("access_token", access);
+        accessCookie.setHttpOnly(true); // js에서 접근 불가능
+//        accessCookie.setSecure(true); // https에서만 전송하는 옵션: 개발 시 비활성화(아직 https 활성화도 안했음)
+        accessCookie.setPath("/"); // 애플리케이션 모든 경로에 대해 전송
+        accessCookie.setMaxAge(30 * 60); // 쿠키 유효기간: 30분(초 단위)
+        return accessCookie;
     }
 
     // Refresh jwt 생성 메소드(Redis에 저장 및 반환)
-    public String createRefresh(String username, String role) {
-
+    public Cookie createRefresh(String username, String role) {
         String uuid = UUID.randomUUID().toString();
         String refreshToken = Jwts.builder()
                 .claim("username", username)
@@ -102,9 +109,16 @@ public class JwtUtil {
                 .signWith(refreshKey, SignatureAlgorithm.HS256) // 암호화 키
                 .compact(); // JWT 문자열로 반환
 
-        // refresh token을 Redis에 저장 (이미 존재하는 키의 값을 사용하여 저장하면 자동으로 덮어쓰기가 된다)
+        // refresh token uuid를 Redis에 저장 (이미 존재하는 키의 값을 사용하여 저장하면 자동으로 덮어쓰기가 된다)
+        // 만료 시 자동 삭제
         redisTemplate.opsForValue().set("refresh:" + username, uuid, refreshExpiration, TimeUnit.MILLISECONDS);
-        return refreshToken;
+
+        Cookie refreshCookie = new Cookie("refresh_token", refreshToken);
+        refreshCookie.setHttpOnly(true);
+//        refreshCookie.setSecure(true);
+        refreshCookie.setPath("/api/auth/"); // refresh token은 해당 경로에서만 서버로 전송하도록 설정
+        refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7일
+        return refreshCookie;
     }
 
     public void deleteRefresh(String username) {
