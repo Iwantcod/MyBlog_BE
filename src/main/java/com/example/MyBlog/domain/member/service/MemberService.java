@@ -5,7 +5,8 @@ import com.example.MyBlog.domain.member.DTO.MemberDTO;
 import com.example.MyBlog.domain.member.DTO.JoinDTO;
 import com.example.MyBlog.domain.member.entity.Member;
 import com.example.MyBlog.domain.member.repository.MemberRepository;
-import com.example.MyBlog.domain.post.service.PostService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -20,6 +21,8 @@ public class MemberService {
     private final MemberRepository memberRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder;
     private final JwtUtil jwtUtil;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     public MemberService(MemberRepository memberRepository, BCryptPasswordEncoder bCryptPasswordEncoder, JwtUtil jwtUtil) {
@@ -46,8 +49,8 @@ public class MemberService {
 
     @Transactional
     public boolean join(JoinDTO joinDTO) {
-        if(isDuplicationUsername(joinDTO.getUsername()) || joinDTO.getAge() <= 0) {
-            // 유저네임 중복된 경우와 Age가 0 이하인 경우 null 반환
+        if(joinDTO.getAge() <= 0 || joinDTO.getUsername() == null || joinDTO.getPassword() == null) {
+            // Age가 0 이하인 경우 null 반환
             log.error("Username already exist or User Age invalid");
             return false;
         } else {
@@ -92,6 +95,7 @@ public class MemberService {
     @Transactional(readOnly = true)
     public MemberDTO getMemberById(Long id) { // 자주 조회하는 유저(ex: 본인 등)는 id로 조회하면 좋음.(성능)
         Optional<Member> member = memberRepository.findById(id);
+
         if(member.isPresent()) {
             return toDTO(member.get());
         } else {
@@ -100,6 +104,16 @@ public class MemberService {
         }
     }
 
+    @Transactional
+    public boolean completeMember(Long memberId, String username) {
+        Optional<Member> member = memberRepository.findById(memberId);
+        if(member.isEmpty()) {
+            return false;
+        }
+        member.get().setUsername(username);
+        memberRepository.save(member.get());
+        return true;
+    }
 
     @Transactional // 비밀번호를 포함한 정보를 넘겨받아야 하기에, JoinDTO로 받는다. 그러나 반환정보에는 비밀번호가 포함되면 안되므로 MemberDTO 반환.
     public boolean updateMemberById(JoinDTO joinDTO, Long userId) {
@@ -152,7 +166,10 @@ public class MemberService {
 
         // 삭제(탈퇴)를 시도한 유저의 jwt의 유저네임 정보와, 식별자로 찾아낸 유저의 유저네임이 같은 경우에만 해당 회원 삭제를 수행
         if(authUsername.equals(member.get().getUsername())) {
-            memberRepository.deleteById(userId);
+            // 회원 삭제 벌크 연산(post, comment, like 테이블에서 데이터베이스의 on delete set null 기능 활용하기 위함)
+            memberRepository.deleteByUsername(userId);
+            entityManager.flush();
+            entityManager.clear();
             logout();
             return true;
         } else {

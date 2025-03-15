@@ -12,6 +12,7 @@ import net.coobird.thumbnailator.Thumbnails;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -155,6 +156,8 @@ public class ImageService {
             post.get().setImagesCount(post.get().getImagesCount() - 1);
         }
         postRepository.save(post.get()); // 변경된 이미지 카운트 수 반영
+        entityManager.flush();
+        entityManager.clear();
         return true;
     }
 
@@ -169,9 +172,8 @@ public class ImageService {
             log.error("DELETE Post FAIL: Authorization information mismatch. post id: {}", postId);
             return false;
         }
-        System.out.println("이미지 제거 시작!!");
         // 1. db에서 이미지 저장 위치정보 조회
-        List<Image> images = imageRepository.findAllByPost(post.get());
+        List<Image> images = imageRepository.findAllByPost(post.get().getId());
         if(images.isEmpty()){
             return true;
         }
@@ -191,10 +193,27 @@ public class ImageService {
         }
 
         // 3. db에서 특정 게시글의 이미지 정보 일괄 삭제
-        imageRepository.deleteAllByPostId(postId);
-        entityManager.flush(); // Persistence Context에 pending상태로 저장된 변경사항이 실제 DB에 전송되어 반영
-        entityManager.clear(); // 엔티티 매니저가 관리하는 모든 엔티티 인스턴스를 제거 -> DB와 영속성 컨텍스트 사이의 불일치 문제 해결(방지)
+        imageRepository.deleteAllByPostId(post.get().getId());
+        entityManager.flush();
+        entityManager.clear();
         return true;
+    }
+
+    @Async
+    protected void deleteImageFromStorage(List<Image> images) {
+        for (Image image : images) {
+            String filePath = storagePath + File.separator + image.getImageUrl();
+            File file = new File(filePath);
+            if(file.exists()){
+                // 파일 제거 후 제거 여부를 bool 값으로 반환받음.
+                boolean deleted = file.delete();
+//                if(!deleted){
+//                    // 제거 실패 시 false 반환
+//                    return false;
+//                }
+            }
+
+        }
     }
 
 

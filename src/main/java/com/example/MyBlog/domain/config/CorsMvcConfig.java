@@ -16,9 +16,8 @@ public class CorsMvcConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**") // 모든 엔드포인트(/**)에 대해 CORS 정책을 적용: 모든 API에 적용
-                .allowedOrigins(clientUrl) // CORS 요청을 특정 출처(origin)에 대해서만 허용
-                .allowedMethods("GET", "POST", "PATCH", "DELETE")
+                .allowedOriginPatterns(clientUrl+"*") // 특정 출처(origin)에 대해서만 CORS 허용
+                .allowedMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
                 .allowCredentials(true);
-
     }
 }

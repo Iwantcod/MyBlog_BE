@@ -13,11 +13,10 @@ public interface ImageRepository extends JpaRepository<Image, Long> {
     @Query("select i from Image i where i.post.id = :postId")
     List<Image> findAllByPostId(@Param("postId") Long postId);
 
-    void deleteAllByPost(Post post);
-
     @Modifying
     @Query("delete from Image i where i.post.id = :postId")
-    void deleteAllByPostId(@Param("postId") Long postId);
+    void deleteAllByPostId(Long postId);
 
-    List<Image> findAllByPost(Post post);
+    @Query("select i from Image i where i.post.id = :postId")
+    List<Image> findAllByPost(@Param("postId") Long postId);
 }

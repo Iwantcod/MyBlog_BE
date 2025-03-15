@@ -46,7 +46,7 @@ public class Comment {
     @Column(nullable = false)
     private boolean isDeleted = false; // 삭제 여부를 나타내는 필드. 기본값 false
 
-    @OneToMany(mappedBy = "parentComment")
+    @OneToMany(mappedBy = "parentComment", fetch = FetchType.LAZY)
     private List<Comment> children = new ArrayList<>(); // 자식 댓글 정보
 
     // materialized path: 댓글의 계층 구조를 문자열로 표현 (예: 부모 식별자가 1, 자식 식별자가 3: "1.3")

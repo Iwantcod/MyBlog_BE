@@ -3,6 +3,7 @@ package com.example.MyBlog.domain.config;
 import com.example.MyBlog.domain.Util.JwtUtil;
 import com.example.MyBlog.domain.filter.JwtFilter;
 import com.example.MyBlog.domain.filter.LoginFilter;
+import com.example.MyBlog.domain.oauth.service.CustomOauth2UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,7 +15,12 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
+import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -28,16 +34,16 @@ public class SecurityConfig {
     private final AuthenticationConfiguration authenticationConfiguration;
     private final JwtUtil jwtUtil;
 
-    @Value("${app.server-url}")
-    private String serverUrl;
+    private final CustomOauth2UserService customOauth2UserService;
 
     @Value("${app.client-url}")
     private String clientUrl;
 
     @Autowired
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JwtUtil jwtUtil) {
+    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JwtUtil jwtUtil, CustomOauth2UserService customOauth2UserService) {
         this.authenticationConfiguration = authenticationConfiguration;
         this.jwtUtil = jwtUtil;
+        this.customOauth2UserService = customOauth2UserService;
     }
 
     @Bean
@@ -52,7 +58,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationSuccessHandler authenticationSuccessHandler, AuthenticationFailureHandler authenticationFailureHandler) throws Exception {
         // 필터를 커스텀한 LoginFilter에서 '기본 로그인 요청 경로'를 "/api/auth/login"으로 변경
         LoginFilter loginFilter = new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil);
         loginFilter.setFilterProcessesUrl("/api/auth/login");
@@ -67,7 +73,7 @@ public class SecurityConfig {
                     @Override
                     public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
                         CorsConfiguration config = new CorsConfiguration();
-                        // 허용할 출처(Origin)를 설정합니다. 여기서는 "http://localhost:61314"만 허용됩니다.
+                        // 허용할 출처(Origin)를 설정합니다.
                         // 즉, 이 도메인에서 오는 요청만을 처리합니다.
                         // Collections.singletonList() == 단 하나의 요소만 가지는 불변(final) 리스트 생성
                         config.setAllowedOrigins(Collections.singletonList(clientUrl));
@@ -95,16 +101,25 @@ public class SecurityConfig {
                     }
                 }))
                 .authorizeHttpRequests((auth) ->
-                        auth.requestMatchers("/api/auth/**", "/login", "/join").permitAll() // 인증을 요청하는 api 및 회원가입, 로그인 페이지는 무인가 접근 허용
+                        auth.requestMatchers("/api/auth/**", "/login", "/join", "/oauth2/**").permitAll() // 인증을 요청하는 api 및 회원가입, 로그인 페이지는 무인가 접근 허용
                                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // admin 관련 페이지와 api 요청은 ADMIN만 가능
                                 .anyRequest().authenticated())
                     .formLogin(AbstractHttpConfigurer::disable)
+                    .oauth2Login(oauth2 -> oauth2.loginPage("/auth/login")
+                            .redirectionEndpoint(redirection -> redirection
+                            .baseUri("/oauth2/code/*"))
+                            .userInfoEndpoint(userInfo -> userInfo
+                            .userService(customOauth2UserService))
+                            .successHandler(authenticationSuccessHandler)
+                            .failureHandler(authenticationFailureHandler)
+                    )
                     .logout(AbstractHttpConfigurer::disable)
                     .httpBasic(AbstractHttpConfigurer::disable)
                     .addFilterBefore(new JwtFilter(jwtUtil), LoginFilter.class) // LoginFilter 앞에 JwtFilter를 위치시킨다.
                     .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class) // 두번째 인자의 필터 순서에 LoginFilter를 추가한다.(바로 앞에 삽입된다)
                     .sessionManagement((session) ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)); // JWT 인증방식을 위해 STATELESS 설정 (세션 미사용)
+
         return http.build();
     }
 }

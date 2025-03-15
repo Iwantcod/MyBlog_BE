@@ -1,6 +1,7 @@
 package com.example.MyBlog.domain.likes.repository;
 
 import com.example.MyBlog.domain.likes.entity.Like;
+import com.example.MyBlog.domain.post.entity.Post;
 import io.lettuce.core.dynamic.annotation.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,4 +25,8 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
     @Modifying
     @Query("delete from Like l where l.member.id = :memberId and l.post.id = :postId")
     void deleteByMemberIdAndPostId(@Param("memberId") Long memberId, @Param("postId") Long postId);
+
+    @Modifying
+    @Query("delete from Like l where l.post.id = :postId")
+    void deleteAllByPostId(@Param("postId") Long postId);
 }

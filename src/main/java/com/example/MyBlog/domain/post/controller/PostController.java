@@ -77,7 +77,7 @@ public class PostController {
             }
         }
 
-        if(responsePostList != null) {
+        if(!responsePostList.isEmpty()) {
             return ResponseEntity.ok().body(responsePostList);
         } else {
             return ResponseEntity.notFound().build();
@@ -176,6 +176,7 @@ public class PostController {
         try {
             // 이미지 먼저 삭제
             if(imageService.deleteImageByPostId(postId)) {
+
                 if(postService.deletePost(postId)) {
                     return ResponseEntity.ok().build();
                 }

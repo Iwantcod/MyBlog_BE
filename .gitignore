@@ -5,7 +5,10 @@ build/
 /src/main/resources/application.*
 !**/src/main/**/build/
 !**/src/test/**/build/
-
+/key.pem
+/cert.pem
+/keystore.p12
+/src/main/resources/keystore.p12
 
 ### STS ###
 .apt_generated

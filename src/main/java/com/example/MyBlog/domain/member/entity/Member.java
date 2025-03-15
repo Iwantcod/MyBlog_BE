@@ -25,19 +25,21 @@ public class Member {
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false)
     private int age;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RoleType roleType = RoleType.ROLE_USER; // 기본값: USER(일반 사용자)
 
-    @Column(nullable = false, unique = true, name = "USERNAME")
+    @Column(unique = true, name = "USERNAME")
     private String username; // 아이디 역할
 
-    private int followersCnt = 0;
+    private String provider; // google 이 들어감
 
-    private int followingCnt = 0;
+    private String providerId; // 구글 로그인한 유저의 고유 ID값이 들어감
+
+    private String oAuthId; // 소셜로 회원가입한 회원을 식별하는 용도
+
 
     @OneToMany(mappedBy = "member")
     private List<Post> posts = new ArrayList<>();
@@ -51,7 +53,7 @@ public class Member {
     @OneToMany(mappedBy = "target", cascade = CascadeType.REMOVE)
     private List<Follow> targets = new ArrayList<>();
 
-    @OneToMany(mappedBy = "member", cascade = CascadeType.REMOVE)
+    @OneToMany(mappedBy = "member")
     private List<Like> likes = new ArrayList<>();
 
     public void setName(String name) {
@@ -70,16 +72,19 @@ public class Member {
         this.username = username;
     }
 
-    public void setFollowersCnt(int followersCnt) {
-        this.followersCnt = followersCnt;
-    }
-
-    public void setFollowingCnt(int followingCnt) {
-        this.followingCnt = followingCnt;
-    }
-
     public void setRoleType(RoleType roleType) {
         this.roleType = roleType;
     }
 
+    public void setProvider(String provider) {
+        this.provider = provider;
+    }
+
+    public void setProviderId(String providerId) {
+        this.providerId = providerId;
+    }
+
+    public void setoAuthId(String oAuthId) {
+        this.oAuthId = oAuthId;
+    }
 }

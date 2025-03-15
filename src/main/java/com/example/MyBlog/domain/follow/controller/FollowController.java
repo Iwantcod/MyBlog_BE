@@ -36,7 +36,7 @@ public class FollowController {
         }
     }
 
-    @GetMapping("/target/{memberId}")
+    @GetMapping("/target/{memberId}") // 특정 유저의 팔로우 목록 조회
     public ResponseEntity<?> getTargets(@PathVariable Long memberId) {
         List<ResponseFollowDTO> responseFollowDTOList = followService.getTargets(memberId);
         if(responseFollowDTOList == null) {
@@ -46,7 +46,7 @@ public class FollowController {
         }
     }
 
-    @GetMapping("/follower/{targetId}")
+    @GetMapping("/follower/{targetId}") // 특정 유저의 팔로워 목록 조회
     public ResponseEntity<?> getFollowers(@PathVariable Long targetId) {
         List<ResponseFollowDTO> responseFollowDTOList = followService.getFollowers(targetId);
         if(responseFollowDTOList == null) {

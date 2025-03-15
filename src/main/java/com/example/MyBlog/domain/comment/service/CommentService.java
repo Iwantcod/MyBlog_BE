@@ -72,6 +72,11 @@ public class CommentService {
                 log.error("Create Comment Error: Cannot found parent comment. post id: {}", requestCommentDTO.getPostId());
                 return false;
             }
+            // 부모 댓글 식별자가 다른 게시글에 존재하는 댓글인 경우 예외 처리
+            if(!parentComment.get().getPost().getId().equals(requestCommentDTO.getPostId())) {
+                log.error("Create Comment Error: Parent Comment's Post id is different. Parent Comment id: {}", requestCommentDTO.getParentCommentId());
+                return false;
+            }
             comment.setParentComment(parentComment.get());
             comment.setDepth(parentComment.get().getDepth() + 1);
         }
@@ -124,7 +129,9 @@ public class CommentService {
 
             if(!comment.isDeleted()) {
                 // 삭제된 댓글이 아닌 경우에만 추가적인 세부 정보를 반환
-                responseCommentDTO.setMemberId(comment.getMember().getId());
+                if(comment.getMember() != null) {
+                    responseCommentDTO.setMemberId(comment.getMember().getId());
+                }
                 responseCommentDTO.setMemberUsername(comment.getMemberUsername());
                 responseCommentDTO.setContent(comment.getContent());
                 responseCommentDTO.setCreatedAt(comment.getCreatedAt());
@@ -185,4 +192,6 @@ public class CommentService {
         postRepository.save(post.get());
         return true;
     }
+
+
 }

@@ -1,5 +1,6 @@
 package com.example.MyBlog.domain.member.controller;
 
+import com.example.MyBlog.domain.follow.service.FollowService;
 import com.example.MyBlog.domain.member.DTO.JoinDTO;
 import com.example.MyBlog.domain.member.DTO.MemberDTO;
 import com.example.MyBlog.domain.member.service.MemberService;
@@ -15,13 +16,15 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/member")
 public class MemberController {
 
-    @Value("${app.server-url}")
-    private String serverUrl;
+    private final FollowService followService;
+    @Value("${app.client-url}")
+    private String clientUrl;
     private final MemberService memberService;
 
     @Autowired
-    public MemberController(MemberService memberService) {
+    public MemberController(MemberService memberService, FollowService followService) {
         this.memberService = memberService;
+        this.followService = followService;
     }
 
 
@@ -40,9 +43,14 @@ public class MemberController {
     @GetMapping("/{userId}")
     public ResponseEntity<MemberDTO> getMemberByUserId(@PathVariable Long userId) {
         MemberDTO memberDTO = memberService.getMemberById(userId);
+
         if (memberDTO == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         } else {
+            // 팔로워 및 팔로잉 수 조회(카운팅)해서 반환
+            int[] followCountInfo = followService.getFollowCountInfo(userId);
+            memberDTO.setFollowerCount(followCountInfo[0]);
+            memberDTO.setFollowingCount(followCountInfo[1]);
             return new ResponseEntity<>(memberDTO, HttpStatus.OK);
         }
     }
@@ -51,7 +59,7 @@ public class MemberController {
     @PostMapping("/logout")
     public ResponseEntity<?> logout() {
         if(memberService.logout()) {
-            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, serverUrl+"/").build();
+            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, clientUrl+"/auth/login").build();
         } else {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -62,20 +70,20 @@ public class MemberController {
     @PatchMapping("/{userId}")
     public ResponseEntity<?> updateMember(@RequestBody JoinDTO newMemberDTO, @PathVariable Long userId) {
         if(memberService.updateMemberById(newMemberDTO, userId)){
-            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, serverUrl+"/").build();
+            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, clientUrl).build();
         } else {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+            return ResponseEntity.status(401).build();
         }
     }
 
     // delete member
     @DeleteMapping("/{userId}")
     public ResponseEntity<?> deleteMember(@PathVariable Long userId) {
-
+        followService.deleteFollowByMemberId(userId); // 삭제할 회원과 관련된 모든 팔로우정보 제거
         if(memberService.deleteMemberById(userId)) {
-            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, serverUrl+"/").build();
+            return ResponseEntity.status(302).header(HttpHeaders.LOCATION, clientUrl+"/auth/login").build();
         } else {
-            return ResponseEntity.status(404).build();
+            return ResponseEntity.status(401).build();
         }
     }
 

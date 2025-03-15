@@ -1,12 +1,16 @@
 package com.example.MyBlog.domain.post.service;
 
+import com.example.MyBlog.domain.comment.repository.CommentRepository;
 import com.example.MyBlog.domain.likes.DTO.ResponseLikesDTO;
+import com.example.MyBlog.domain.likes.repository.LikeRepository;
 import com.example.MyBlog.domain.member.entity.Member;
 import com.example.MyBlog.domain.member.repository.MemberRepository;
 import com.example.MyBlog.domain.post.DTO.RequestAddPostDTO;
 import com.example.MyBlog.domain.post.DTO.ResponsePostDTO;
 import com.example.MyBlog.domain.post.entity.Post;
 import com.example.MyBlog.domain.post.repository.PostRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -26,17 +30,26 @@ import java.util.Optional;
 public class PostService {
     private final PostRepository postRepository;
     private final MemberRepository memberRepository;
+    private final CommentRepository commentRepository;
+    private final LikeRepository likeRepository;
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Autowired
-    public PostService(PostRepository postRepository, MemberRepository memberRepository) {
+    public PostService(PostRepository postRepository, MemberRepository memberRepository, CommentRepository commentRepository, LikeRepository likeRepository) {
         this.postRepository = postRepository;
         this.memberRepository = memberRepository;
+        this.commentRepository = commentRepository;
+        this.likeRepository = likeRepository;
     }
 
     private ResponsePostDTO toDTO(Post post) {
         ResponsePostDTO responsePostDTO = new ResponsePostDTO();
         // 게시글의 기본정보(게시글 식별자, 작성자명, 좋아요 수) 및 제목과 본문 정보를 변환한다.
         responsePostDTO.setId(post.getId());
-        responsePostDTO.setMemberId(post.getMember().getId()); // 작성자 회원 식별자
+        if(post.getMember() != null) {
+            responsePostDTO.setMemberId(post.getMember().getId()); // 작성자 회원 식별자
+        }
         responsePostDTO.setUsername(post.getMemberUsername());
         responsePostDTO.setTitle(post.getTitle());
         responsePostDTO.setLikesCount(post.getLikesCount()); // 좋아요 누른 유저정보는 LAZY하게 조회
@@ -171,9 +184,17 @@ public class PostService {
             log.error("DELETE Post FAIL: Authorization information mismatch. post id: {}", id);
             return false;
         }
-        // 게시글에 작성된 댓글들은 JPA의 '고아 객체 제거' 옵션으로 자동으로 제거된다.
 
+        if(post.get().getCommentsCount() > 0) {
+            commentRepository.deleteAllByPostId(id);
+        }
+        if(post.get().getLikesCount() > 0) {
+            likeRepository.deleteAllByPostId(id);
+        }
         postRepository.deleteById(id);
+        // 벌크 연산 수행 후 영속성 컨텍스트 상태와 DB의 상태를 서로 동기화하기 위해 영속성 컨텍스트의 내용 flush 및 clear: 필수
+        entityManager.flush();
+        entityManager.clear();
         log.info("DELETE Post SUCCESS. Post. id: {}", id);
         return true;
     }

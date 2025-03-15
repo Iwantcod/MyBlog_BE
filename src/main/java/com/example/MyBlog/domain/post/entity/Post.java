@@ -43,17 +43,19 @@ public class Post {
 
     private int imagesCount = 0; // 이미지 수 카운트: 0이면 Image 테이블 조회를 하지 않는다.
 
+    private Long viewsCount = 0L; // 조회수: redis에서 카운팅했다가 동기화
+
 //    @Column(nullable = false)
 //    @ColumnDefault("false")
 //    private boolean isDeleted;
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE, orphanRemoval = true)
+    @OneToMany(mappedBy = "post", fetch = FetchType.LAZY)
     private List<Comment> comments = new ArrayList<>();
 
     @OneToMany(mappedBy = "post") // 외부 스토리지를 이용하므로 JPA에게 cascade를 위임하지 않고 직접 로직을 구상하여 사용
     private List<Image> images = new ArrayList<>();
 
-    @OneToMany(mappedBy = "post", cascade = CascadeType.REMOVE, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "post", fetch = FetchType.LAZY)
     private List<Like> likes = new ArrayList<>();
 
     public void setMember(Member member) {

@@ -57,12 +57,6 @@ public class FollowService {
         follow.setMember(member.get());
         follow.setTarget(target.get());
         followRepository.save(follow);
-        // 팔로우하는 사람의 팔로잉 카운트 1 증가
-        member.get().setFollowingCnt(member.get().getFollowingCnt() + 1);
-        // 팔로잉 대상의 팔로워 카운트 1 증가
-        target.get().setFollowersCnt(target.get().getFollowersCnt() + 1);
-        memberRepository.save(member.get());
-        memberRepository.save(target.get());
         return true;
     }
 
@@ -74,16 +68,10 @@ public class FollowService {
             log.error("member or target is empty. MemberId: {}, TargetId: {}", requestFollowDTO.getMemberId(), requestFollowDTO.getTargetId());
             return false;
         }
-
-        // 팔로우하는 사람의 팔로잉 카운트 1 감소
-        member.get().setFollowingCnt(member.get().getFollowingCnt() - 1);
-        // 팔로잉 대상의 팔로워 카운트 1 감소
-        target.get().setFollowersCnt(target.get().getFollowersCnt() - 1);
-        memberRepository.save(member.get());
-        memberRepository.save(target.get());
-        // 팔로우 정보를 삭제하는 '벌크 연산' 후에는 영속성 컨텍스트를 초기화 해줘야 하므로, 벌크 연산 전에 회원 정보 업데이트를 진행한다.
-        // 벌크 연산 이후에 업데이트 코드가 위치하면 select 쿼리가 또다시 나간다.
-
+        if(followRepository.findByMemberIdAndTargetId(requestFollowDTO.getMemberId(), requestFollowDTO.getTargetId()).isEmpty()) {
+            log.error("Doesn't Exist Follow Information");
+            return false;
+        }
 
         followRepository.deleteByMemberIdAndTargetId(requestFollowDTO.getMemberId(), requestFollowDTO.getTargetId());
         // 벌크연산으로 인해 발생할 수 있는 영속성 컨텍스트와 DB의 불일치 해소
@@ -92,7 +80,7 @@ public class FollowService {
         return true;
     }
 
-    // 특정 유저가 팔로우하는 목록을 조회
+    // 특정 유저가 팔로우하는 회원을 조회
     @Transactional(readOnly = true)
     public List<ResponseFollowDTO> getTargets(Long memberId) {
         List<Follow> targetList = followRepository.findAllByMemberId(memberId);
@@ -108,7 +96,7 @@ public class FollowService {
         return responseFollowDTOList;
     }
 
-    // 특정 유저를 팔로우하는 목록 조회
+    // 특정 유저를 팔로우하는 회원 조회
     @Transactional(readOnly = true)
     public List<ResponseFollowDTO> getFollowers(Long targetId) {
         List<Follow> followerList = followRepository.findAllByTargetId(targetId);
@@ -121,5 +109,29 @@ public class FollowService {
             responseFollowDTOList.add(toDto(follow));
         }
         return responseFollowDTOList;
+    }
+
+    @Transactional
+    public void deleteFollowByMemberId(Long memberId) {
+        Optional<Member> member = memberRepository.findById(memberId);
+        if(member.isEmpty()) {
+            log.error("Member not found. MemberId: {}", memberId);
+            return;
+        }
+        followRepository.deleteByMemberId(memberId);
+        followRepository.deleteByTargetId(memberId);
+        entityManager.flush();
+        entityManager.clear();
+    }
+
+    @Transactional(readOnly = true)
+    public int[] getFollowCountInfo(Long memberId) {
+        Integer followerCount = followRepository.countByTargetId(memberId);
+        Integer followingCount = followRepository.countByMemberId(memberId);
+
+        int[] counts = new int[2];
+        counts[0] = followerCount;
+        counts[1] = followingCount;
+        return counts;
     }
 }

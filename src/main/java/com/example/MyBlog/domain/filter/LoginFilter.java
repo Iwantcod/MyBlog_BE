@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -13,12 +14,15 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     // 로그인을 위한 필터. 유저네임과 패스워드가 매칭되는지 검증 후 성공하면 JWT 반환
 
+    @Value("${app.client-url}")
+    private String clientUrl;
 
     // 토큰 검증을 수행할 AuthenticationManager 에게 정보를 넘겨주기 위해, 정보를 가진다.
     private final AuthenticationManager authenticationManager;
@@ -42,7 +46,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     }
 
     @Override // 로그인 성공 시 수행되는 메소드(JWT 발급)
-    protected void successfulAuthentication(HttpServletRequest req, HttpServletResponse res, FilterChain chain, Authentication auth) {
+    protected void successfulAuthentication(HttpServletRequest req, HttpServletResponse res, FilterChain chain, Authentication auth) throws IOException {
         // (JwtUserDetails) auth.getPrincipal(): 인증된 사용자 정보를 JwtUserDetails 타입으로 가져온다.
         JwtUserDetails jwtUserDetails = (JwtUserDetails) auth.getPrincipal();
 
@@ -63,6 +67,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         // 응답에 쿠키 추가
         res.addCookie(accessCookie);
         res.addCookie(refreshCookie);
+        res.sendRedirect(clientUrl);
     }
 
 
