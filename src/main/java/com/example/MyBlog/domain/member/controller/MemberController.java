@@ -4,6 +4,7 @@ import com.example.MyBlog.domain.follow.service.FollowService;
 import com.example.MyBlog.domain.member.DTO.JoinDTO;
 import com.example.MyBlog.domain.member.DTO.MemberDTO;
 import com.example.MyBlog.domain.member.service.MemberService;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +31,7 @@ public class MemberController {
 
     // get user by username
     @GetMapping("/name/{username}")
+    @Operation(summary = "회원 유저네임으로 조회")
     public ResponseEntity<MemberDTO> getMemberByUsernameHash(@PathVariable String username) {
         MemberDTO memberDTO = memberService.getMemberByUsername(username);
         if (memberDTO == null) {
@@ -41,6 +43,7 @@ public class MemberController {
 
     // get user by user id
     @GetMapping("/{userId}")
+    @Operation(summary = "회원 식별자로 조회")
     public ResponseEntity<MemberDTO> getMemberByUserId(@PathVariable Long userId) {
         MemberDTO memberDTO = memberService.getMemberById(userId);
 
@@ -57,6 +60,7 @@ public class MemberController {
 
     // logout: remove refresh token at redis.
     @PostMapping("/logout")
+    @Operation(summary = "로그아웃", description = "해당 회원의 Refresh Token을 Redis에서 제거")
     public ResponseEntity<?> logout() {
         if(memberService.logout()) {
             return ResponseEntity.status(302).header(HttpHeaders.LOCATION, clientUrl+"/auth/login").build();
@@ -68,6 +72,7 @@ public class MemberController {
 
     // update member
     @PatchMapping("/{userId}")
+    @Operation(summary = "회원 정보 수정", description = "자기 자신이 아니면 수정 불가(jwt로 검증)")
     public ResponseEntity<?> updateMember(@RequestBody JoinDTO newMemberDTO, @PathVariable Long userId) {
         if(memberService.updateMemberById(newMemberDTO, userId)){
             return ResponseEntity.status(302).header(HttpHeaders.LOCATION, clientUrl).build();
@@ -78,6 +83,7 @@ public class MemberController {
 
     // delete member
     @DeleteMapping("/{userId}")
+    @Operation(summary = "회원 탈퇴", description = "자기 자신이 아니면 탈퇴 불가(jwt로 검증)")
     public ResponseEntity<?> deleteMember(@PathVariable Long userId) {
         followService.deleteFollowByMemberId(userId); // 삭제할 회원과 관련된 모든 팔로우정보 제거
         if(memberService.deleteMemberById(userId)) {

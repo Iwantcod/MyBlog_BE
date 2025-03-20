@@ -7,6 +7,7 @@ import com.example.MyBlog.domain.post.DTO.RequestAddPostDTO;
 import com.example.MyBlog.domain.post.DTO.RequestUpdatePostDTO;
 import com.example.MyBlog.domain.post.DTO.ResponsePostDTO;
 import com.example.MyBlog.domain.post.service.PostService;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,19 +21,18 @@ import java.util.List;
 public class PostController {
     public final PostService postService;
     private final ImageService imageService;
-    private final LikesService likesService;
 
     @Autowired
-    public PostController(PostService postService, ImageService imageService, LikesService likesService) {
+    public PostController(PostService postService, ImageService imageService) {
         this.postService = postService;
         this.imageService = imageService;
-        this.likesService = likesService;
     }
 
 
     // create post
     // multipart/form-data 요청을 받기 위해 consumes 옵션 설정
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "게시글 신규작성", description = "새로운 게시글 작성")
     public ResponseEntity<?> addPost(@ModelAttribute RequestAddPostDTO postDTO) {
         // 1. postDTO 내용을 db에 삽입
         Long postResult = postService.addPost(postDTO); // 삽입 후 게시글 식별자를 반환(Long)
@@ -65,6 +65,7 @@ public class PostController {
         // 3. PostService: 조회 결과에서 게시글 식별자를 뽑아내서 게시글 10개 조회(10번의 쿼리 발생)
         // 4. PostController: 조회된 게시글 10개의 정보를 클라이언트로 반환
     @GetMapping // 예시: GET /api/post?targets=1,2,3
+    @Operation(summary = "게시글 식별자 리스트로 조회", description = "ex: 특정 유저가 좋아요 누른 모든 게시글 조회 등")
     public ResponseEntity<?> getPost(@RequestParam List<Long> targets) {
         List<ResponsePostDTO> responsePostList = postService.getPostById(targets);
 
@@ -86,6 +87,7 @@ public class PostController {
 
     // get 10 posts by member id paging
     @GetMapping("/own/{memberId}/{startOffset}") // 특정 회원이 작성한 게시글 모두 조회
+    @Operation(summary = "게시글 최신순 10개 조회: 회원별")
     public ResponseEntity<?> getPostByMemberId(@PathVariable Long memberId, @PathVariable Integer startOffset) {
         List<ResponsePostDTO> responsePostList = postService.getAllPostsByMemberId(memberId, startOffset);
         if(responsePostList != null) {
@@ -105,6 +107,7 @@ public class PostController {
 
     // get 10 posts paging
     @GetMapping("/recent/{startOffset}") // 최신순 게시글 10개 조회(페이징)
+    @Operation(summary = "게시글 최신순 10개 조회(페이징)", description = "startOffset은 1부터 시작")
     public ResponseEntity<?> getPostListPaging(@PathVariable Integer startOffset) {
         List<ResponsePostDTO> responsePostList = postService.getPostListPaging(startOffset);
         if(responsePostList != null) {
@@ -127,6 +130,7 @@ public class PostController {
     // Multipart 전송을 위해 PATCH가 아닌 POST 혹은 PUT을 사용해야 하는데, POST 선택'
     // Multipart 데이터 전송은 POST에 최적화되어있다.
     @PostMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "게시글 업데이트", description = "자신의 게시글이 아닌 경우 수정 불가(jwt 검증). Patch나 Put 요청이 아닌 Post 요청임을 주의")
     public ResponseEntity<?> updatePost(@ModelAttribute RequestUpdatePostDTO postDTO, @PathVariable Long postId) {
         //1. 프론트로부터 넘겨받은 새로운 ‘제목’, ‘본문’ 정보를 post 테이블에 업데이트한다. 이 업데이트 성공 시 이후 내용을 수행
         if(postService.updatePost(postId, postDTO.getTitle(), postDTO.getContent())) {
@@ -172,6 +176,7 @@ public class PostController {
 
     // delete post by post id
     @DeleteMapping("/{postId}")
+    @Operation(summary = "게시글 제거", description = "자신의 게시글이 아닌 경우 제거 불가(jwt 검증)")
     public ResponseEntity<?> deletePost(@PathVariable Long postId) {
         try {
             // 이미지 먼저 삭제

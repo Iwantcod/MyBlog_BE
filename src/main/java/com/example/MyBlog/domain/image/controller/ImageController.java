@@ -3,6 +3,7 @@ package com.example.MyBlog.domain.image.controller;
 import com.example.MyBlog.domain.image.DTO.RequestImageDTO;
 import com.example.MyBlog.domain.image.DTO.ResponseImageDTO;
 import com.example.MyBlog.domain.image.service.ImageService;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +29,7 @@ public class ImageController {
     // 이미지를 전송받을 때에는 Json 방식을 이용하지 않는다.
     // 쿼리 문자열이 get 방식과는 달리, 메시지의 body로 전송받는다. (ModelAttribute)
     @PostMapping
+    @Operation(summary = "이미지 업로드(사용X)")
     public ResponseEntity<?> uploadImages(@ModelAttribute RequestImageDTO imageDTO) {
         List<MultipartFile> fileList = imageDTO.getFileList();
         Long postId = imageDTO.getPostId();
@@ -48,6 +50,7 @@ public class ImageController {
     }
 
     @GetMapping(value = "/file/{imagename}", produces = MediaType.IMAGE_JPEG_VALUE)
+    @Operation(summary = "이미지 실제 파일을 조회", description = "파라메터에 파일의 확장자명까지 기입해주세요.")
     public ResponseEntity<?> getImageFile(@PathVariable String imagename) {
         try {
             // 이미지 이름을 통해 실제로 불러온 이미지 파일(바이트)
@@ -63,6 +66,7 @@ public class ImageController {
 
 
     @GetMapping("/{postId}") // postId를 통한 이미지 경로 조회
+    @Operation(summary = "게시글 식별자를 통한 이미지 경로 조회(사용X)")
     public ResponseEntity<?> getImagePath(@PathVariable Long postId) {
         List<ResponseImageDTO> imageList = imageService.getImageByPost(postId);
         if(imageList.isEmpty()) {
@@ -74,6 +78,7 @@ public class ImageController {
     }
 
     @DeleteMapping // List<Long>를 통한 복수의 이미지 삭제
+    @Operation(summary = "복수의 이미지 삭제(사용X)")
     public ResponseEntity<?> deleteImage(@RequestBody List<Long> imageIds, @PathVariable Long postId) {
         try {
             if(imageService.deleteImageById(imageIds, postId)) {
@@ -87,6 +92,7 @@ public class ImageController {
     }
 
     @DeleteMapping("/{postId}") // 게시글 하나에 소속되어있는 모든 이미지 삭제
+    @Operation(summary = "특정 게시글의 모든 이미지 삭제(사용X)")
     public ResponseEntity<?> deleteAllImageByPost(@PathVariable Long postId) {
         try {
             if(imageService.deleteImageByPostId(postId)) {

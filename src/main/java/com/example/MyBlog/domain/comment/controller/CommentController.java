@@ -3,6 +3,7 @@ package com.example.MyBlog.domain.comment.controller;
 import com.example.MyBlog.domain.comment.DTO.RequestCommentDTO;
 import com.example.MyBlog.domain.comment.DTO.ResponseCommentDTO;
 import com.example.MyBlog.domain.comment.service.CommentService;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ public class CommentController {
     }
 
     @GetMapping("/{postId}/{startOffset}")
+    @Operation(summary = "댓글 최신순 조회", description = "startOffset은 1부터 시작")
     public ResponseEntity<?> getCommentByPostIdPaging(@PathVariable Long postId, @PathVariable Integer startOffset) {
         List<ResponseCommentDTO> commentList = commentService.getCommentsByPostIdPaging(postId, startOffset);
         if (commentList == null) {
@@ -29,6 +31,7 @@ public class CommentController {
     }
 
     @PostMapping
+    @Operation(summary = "댓글 작성")
     public ResponseEntity<?> createComment(@RequestBody RequestCommentDTO requestCommentDTO) {
         if(commentService.addComment(requestCommentDTO)) {
             return ResponseEntity.status(201).body("Comment Created");
@@ -38,6 +41,7 @@ public class CommentController {
     }
 
     @PatchMapping("/{commentId}")
+    @Operation(summary = "댓글 수정")
     public ResponseEntity<?> updateComment(@RequestBody String updatedContent, @PathVariable Long commentId) {
         if(commentService.updateComment(updatedContent, commentId)) {
             return ResponseEntity.status(200).body("Comment Updated");
@@ -47,6 +51,7 @@ public class CommentController {
     }
 
     @PatchMapping("/off/{commentId}")
+    @Operation(summary = "댓글 삭제", description = "Delete 요청이 아닌 Patch 요청임을 주의")
     public ResponseEntity<?> deleteComment(@PathVariable Long commentId) {
         if(commentService.deleteComment(commentId)) {
             return ResponseEntity.status(200).body("Comment Deleted");
