@@ -15,9 +15,6 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -31,8 +28,6 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
     //AuthenticationManager가 인자로 받을 AuthenticationConfiguraion 객체 생성자 주입
-    private final AuthenticationConfiguration authenticationConfiguration;
-    private final JwtUtil jwtUtil;
 
     private final CustomOauth2UserService customOauth2UserService;
 
@@ -40,9 +35,7 @@ public class SecurityConfig {
     private String clientUrl;
 
     @Autowired
-    public SecurityConfig(AuthenticationConfiguration authenticationConfiguration, JwtUtil jwtUtil, CustomOauth2UserService customOauth2UserService) {
-        this.authenticationConfiguration = authenticationConfiguration;
-        this.jwtUtil = jwtUtil;
+    public SecurityConfig(CustomOauth2UserService customOauth2UserService) {
         this.customOauth2UserService = customOauth2UserService;
     }
 
@@ -58,10 +51,25 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationSuccessHandler authenticationSuccessHandler, AuthenticationFailureHandler authenticationFailureHandler) throws Exception {
+    public LoginFilter loginFilter(AuthenticationManager authenticationManager, JwtUtil jwtUtil) {
+        LoginFilter filter = new LoginFilter(authenticationManager, jwtUtil);
+        filter.setAuthenticationManager(authenticationManager); // LoginFilter의 부모 필터의 AuthenticationManager 필드또한 별도로 초기화(LoginFilter의 필드와는 별개이다)
+        filter.setFilterProcessesUrl("/api/auth/login");
+        return filter;
+    }
+
+    @Bean
+    public JwtFilter jwtFilter(JwtUtil jwtUtil) {
+        return new JwtFilter(jwtUtil);
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, AuthenticationSuccessHandler authenticationSuccessHandler, AuthenticationFailureHandler authenticationFailureHandler,
+                                                   LoginFilter loginFilter,
+                                                   JwtFilter jwtFilter) throws Exception {
         // 필터를 커스텀한 LoginFilter에서 '기본 로그인 요청 경로'를 "/api/auth/login"으로 변경
-        LoginFilter loginFilter = new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil);
-        loginFilter.setFilterProcessesUrl("/api/auth/login");
+//        LoginFilter loginFilter = new LoginFilter(authenticationManager(authenticationConfiguration), jwtUtil);
+//        loginFilter.setFilterProcessesUrl("/api/auth/login");
 
 
         // HttpSecurity 설정
@@ -104,20 +112,20 @@ public class SecurityConfig {
                         auth.requestMatchers("/api/auth/**", "/login", "/join", "/oauth2/**").permitAll() // 인증을 요청하는 api 및 회원가입, 로그인 페이지는 무인가 접근 허용
                                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // admin 관련 페이지와 api 요청은 ADMIN만 가능
                                 .anyRequest().authenticated())
-                    .formLogin(AbstractHttpConfigurer::disable)
-                    .oauth2Login(oauth2 -> oauth2.loginPage("/auth/login")
-                            .redirectionEndpoint(redirection -> redirection
-                            .baseUri("/oauth2/code/*"))
-                            .userInfoEndpoint(userInfo -> userInfo
-                            .userService(customOauth2UserService))
-                            .successHandler(authenticationSuccessHandler)
-                            .failureHandler(authenticationFailureHandler)
-                    )
-                    .logout(AbstractHttpConfigurer::disable)
-                    .httpBasic(AbstractHttpConfigurer::disable)
-                    .addFilterBefore(new JwtFilter(jwtUtil), LoginFilter.class) // LoginFilter 앞에 JwtFilter를 위치시킨다.
-                    .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class) // 두번째 인자의 필터 순서에 LoginFilter를 추가한다.(바로 앞에 삽입된다)
-                    .sessionManagement((session) ->
+                .formLogin(AbstractHttpConfigurer::disable)
+                .oauth2Login(oauth2 -> oauth2.loginPage("/auth/login")
+                        .redirectionEndpoint(redirection -> redirection
+                                .baseUri("/oauth2/code/*"))
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOauth2UserService))
+                        .successHandler(authenticationSuccessHandler)
+                        .failureHandler(authenticationFailureHandler)
+                )
+                .logout(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .addFilterBefore(jwtFilter, LoginFilter.class) // .addFilterBefore(new JwtFilter(jwtUtil), LoginFilter.class) // LoginFilter 앞에 JwtFilter를 위치시킨다.
+                .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class) // 두번째 인자의 필터 순서에 LoginFilter를 추가한다.(바로 앞에 삽입된다)
+                .sessionManagement((session) ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)); // JWT 인증방식을 위해 STATELESS 설정 (세션 미사용)
 
         return http.build();

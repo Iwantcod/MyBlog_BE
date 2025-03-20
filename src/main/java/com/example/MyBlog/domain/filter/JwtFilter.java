@@ -12,10 +12,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+@Component
 public class JwtFilter extends OncePerRequestFilter {
     // JWT 검증을 위한 필터
     // 요청 헤더 Authorization 키에 JWT가 존재하는 경우 검증하고, 강제로 SecurityContextHolder에 세션을 생성한다.

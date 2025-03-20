@@ -13,11 +13,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Iterator;
 
+@Component
 public class LoginFilter extends UsernamePasswordAuthenticationFilter {
     // 로그인을 위한 필터. 유저네임과 패스워드가 매칭되는지 검증 후 성공하면 JWT 반환
 
