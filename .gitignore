@@ -10,6 +10,9 @@ build/
 /keystore.p12
 /src/main/resources/keystore.p12
 
+# 로그 파일은 깃에 올리지 않는다.
+/MyBlog.*
+
 ### STS ###
 .apt_generated
 .classpath

@@ -109,7 +109,7 @@ public class SecurityConfig {
                     }
                 }))
                 .authorizeHttpRequests((auth) ->
-                        auth.requestMatchers("/api/auth/**", "/login", "/join", "/oauth2/**").permitAll() // 인증을 요청하는 api 및 회원가입, 로그인 페이지는 무인가 접근 허용
+                        auth.requestMatchers("/api/auth/**", "/login", "/join", "/oauth2/**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll() // 인증을 요청하는 api 및 회원가입, 로그인 페이지는 무인가 접근 허용
                                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // admin 관련 페이지와 api 요청은 ADMIN만 가능
                                 .anyRequest().authenticated())
                 .formLogin(AbstractHttpConfigurer::disable)
