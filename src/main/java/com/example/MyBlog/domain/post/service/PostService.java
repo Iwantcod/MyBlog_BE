@@ -1,7 +1,6 @@
 package com.example.MyBlog.domain.post.service;
 
 import com.example.MyBlog.domain.comment.repository.CommentRepository;
-import com.example.MyBlog.domain.likes.DTO.ResponseLikesDTO;
 import com.example.MyBlog.domain.likes.repository.LikeRepository;
 import com.example.MyBlog.domain.member.entity.Member;
 import com.example.MyBlog.domain.member.repository.MemberRepository;
@@ -13,6 +12,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +22,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -54,7 +56,7 @@ public class PostService {
         responsePostDTO.setTitle(post.getTitle());
         responsePostDTO.setLikesCount(post.getLikesCount()); // 좋아요 누른 유저정보는 LAZY하게 조회
         responsePostDTO.setCommentsCount(post.getCommentsCount());
-        responsePostDTO.setCreatedAt(post.getCreatedAt());
+        responsePostDTO.setCreatedAt(post.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
         responsePostDTO.setImagesCount(post.getImagesCount());
         return responsePostDTO;
     }
@@ -103,6 +105,7 @@ public class PostService {
 
 
     @Transactional(readOnly = true) // 최신순 게시글 조회
+    @Cacheable(value = "recentPosts", key = "#startOffset")
     public List<ResponsePostDTO> getPostListPaging(Integer startOffset) {
         // 프론트로부터 1,2,3,4... 의 값을 받는다. 이 값에 10을 곱한 값이 조회 시작지점이다.
         int pageSize = 10;
@@ -124,6 +127,7 @@ public class PostService {
     // 게시글 작성 메소드.
     // 게시글 작성이 성공하면 게시글 식별자를 반환한다. 그리고 프론트에서는 이 식별자를 통해 이미지 업로드 api를 요청한다.
     @Transactional
+    @CacheEvict(value = "recentPosts", allEntries = true)
     public Long addPost(RequestAddPostDTO postDTO) {
         Optional<Member> member = memberRepository.findById(postDTO.getMemberId());
         if (member.isEmpty()) {
@@ -141,7 +145,8 @@ public class PostService {
     }
 
 
-    @Transactional
+    @Transactional // 게시글 수정
+    @CacheEvict(value = "recentPosts", allEntries = true)
     public boolean updatePost(Long postId, String title, String content) {
         String authUsername = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -171,6 +176,7 @@ public class PostService {
     }
 
     @Transactional
+    @CacheEvict(value = "recentPosts", allEntries = true)
     public boolean deletePost(Long id) {
         String authUsername = SecurityContextHolder.getContext().getAuthentication().getName();
         Optional<Post> post = postRepository.findById(id);

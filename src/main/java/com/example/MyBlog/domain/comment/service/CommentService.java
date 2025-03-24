@@ -18,6 +18,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -38,13 +39,25 @@ public class CommentService {
     private ResponseCommentDTO toDTO(Comment comment) {
         ResponseCommentDTO responseCommentDTO = new ResponseCommentDTO();
         responseCommentDTO.setId(comment.getId());
-        responseCommentDTO.setMemberId(comment.getMember().getId());
-        responseCommentDTO.setMemberUsername(comment.getMemberUsername());
-        responseCommentDTO.setPostId(comment.getPost().getId()); // post 조회
-        responseCommentDTO.setParentCommentId(comment.getParentComment().getId()); // comment 조회
+        responseCommentDTO.setPostId(comment.getPost().getId());
         responseCommentDTO.setDepth(comment.getDepth());
-        responseCommentDTO.setContent(comment.getContent());
-        responseCommentDTO.setCreatedAt(comment.getCreatedAt());
+
+        if(comment.getParentComment() != null) {
+            responseCommentDTO.setParentCommentId(comment.getParentComment().getId());
+        }
+
+
+        if(!comment.isDeleted()) {
+            // 삭제된 댓글이 아닌 경우에만 추가적인 세부 정보를 반환
+            if(comment.getMember() != null) {
+                responseCommentDTO.setMemberId(comment.getMember().getId());
+            }
+            responseCommentDTO.setMemberUsername(comment.getMemberUsername());
+            responseCommentDTO.setContent(comment.getContent());
+            responseCommentDTO.setCreatedAt(comment.getCreatedAt().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+        } else {
+            responseCommentDTO.setContent("삭제된 댓글입니다.");
+        }
         return responseCommentDTO;
     }
 
@@ -116,30 +129,7 @@ public class CommentService {
             return null;
         }
 
-        Page<ResponseCommentDTO> dtoPage = comments.map(comment -> {
-            ResponseCommentDTO responseCommentDTO = new ResponseCommentDTO();
-            responseCommentDTO.setId(comment.getId());
-            responseCommentDTO.setPostId(comment.getPost().getId());
-            responseCommentDTO.setDepth(comment.getDepth());
-
-            if(comment.getParentComment() != null) {
-                responseCommentDTO.setParentCommentId(comment.getParentComment().getId());
-            }
-
-
-            if(!comment.isDeleted()) {
-                // 삭제된 댓글이 아닌 경우에만 추가적인 세부 정보를 반환
-                if(comment.getMember() != null) {
-                    responseCommentDTO.setMemberId(comment.getMember().getId());
-                }
-                responseCommentDTO.setMemberUsername(comment.getMemberUsername());
-                responseCommentDTO.setContent(comment.getContent());
-                responseCommentDTO.setCreatedAt(comment.getCreatedAt());
-            } else {
-                responseCommentDTO.setContent("삭제된 댓글입니다.");
-            }
-            return responseCommentDTO;
-        });
+        Page<ResponseCommentDTO> dtoPage = comments.map(this::toDTO);
         log.info("GET Comment SUCCESS.");
         return dtoPage.getContent();
     }

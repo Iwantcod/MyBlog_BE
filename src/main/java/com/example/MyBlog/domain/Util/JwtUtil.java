@@ -64,7 +64,7 @@ public class JwtUtil {
     }
 
     public boolean isExistRefresh(String username, String uuid) {
-        String requestValue = redisTemplate.opsForValue().get("refresh:" + username);
+        String requestValue = (String) redisTemplate.opsForValue().get("refresh:" + username);
         // 클라이언트 요청에 담긴 username을 키로 하여 저장된 uuid 값이 존재하고, 그 uuid값이 Redis에 저장된 값과 동일하다면 true
         if(requestValue != null){
             return requestValue.equals(uuid);
@@ -91,7 +91,7 @@ public class JwtUtil {
 
         Cookie accessCookie = new Cookie("access_token", access);
         accessCookie.setHttpOnly(true); // js에서 접근 불가능
-//        accessCookie.setSecure(true); // https에서만 전송하는 옵션: 개발 시 비활성화(아직 https 활성화도 안했음)
+        accessCookie.setSecure(true); // https에서만 전송하는 옵션
         accessCookie.setPath("/"); // 애플리케이션 모든 경로에 대해 전송
         accessCookie.setMaxAge(30 * 60); // 쿠키 유효기간: 30분(초 단위)
         return accessCookie;
@@ -115,7 +115,7 @@ public class JwtUtil {
 
         Cookie refreshCookie = new Cookie("refresh_token", refreshToken);
         refreshCookie.setHttpOnly(true);
-//        refreshCookie.setSecure(true);
+        refreshCookie.setSecure(true);
         refreshCookie.setPath("/api/auth/"); // refresh token은 해당 경로에서만 서버로 전송하도록 설정
         refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7일
         return refreshCookie;

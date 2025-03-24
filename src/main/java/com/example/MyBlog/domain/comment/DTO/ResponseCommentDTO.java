@@ -18,5 +18,5 @@ public class ResponseCommentDTO {
     private Long parentCommentId;
     private int depth;
     private String content;
-    private LocalDateTime createdAt;
+    private String createdAt;
 }

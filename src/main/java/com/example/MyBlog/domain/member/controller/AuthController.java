@@ -85,4 +85,5 @@ public class AuthController {
             return ResponseEntity.status(302).header(HttpHeaders.LOCATION, clientUrl + "/auth/login").build();
         }
     }
+
 }

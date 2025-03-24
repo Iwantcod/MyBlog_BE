@@ -2,7 +2,6 @@ package com.example.MyBlog.domain.post.controller;
 
 import com.example.MyBlog.domain.image.DTO.ResponseImageDTO;
 import com.example.MyBlog.domain.image.service.ImageService;
-import com.example.MyBlog.domain.likes.service.LikesService;
 import com.example.MyBlog.domain.post.DTO.RequestAddPostDTO;
 import com.example.MyBlog.domain.post.DTO.RequestUpdatePostDTO;
 import com.example.MyBlog.domain.post.DTO.ResponsePostDTO;
@@ -127,7 +126,7 @@ public class PostController {
 
 
 
-    // Multipart 전송을 위해 PATCH가 아닌 POST 혹은 PUT을 사용해야 하는데, POST 선택'
+    // Multipart 전송을 위해 PATCH가 아닌 POST 혹은 PUT을 사용해야 하는데, POST 선택
     // Multipart 데이터 전송은 POST에 최적화되어있다.
     @PostMapping(value = "/{postId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "게시글 업데이트", description = "자신의 게시글이 아닌 경우 수정 불가(jwt 검증). Patch나 Put 요청이 아닌 Post 요청임을 주의")

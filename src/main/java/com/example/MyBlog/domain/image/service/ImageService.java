@@ -12,6 +12,9 @@ import net.coobird.thumbnailator.Thumbnails;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -55,6 +58,7 @@ public class ImageService {
 
     // 이미지 저장(이미 생성된 게시글에 이미지를 추가할 시 사용)
     @Transactional
+    @CacheEvict(value = "images", key = "#postId")
     public boolean addImages(List<MultipartFile> fileList, Long postId) throws IOException {
         Optional<Post> post = postRepository.findById(postId);
         if(post.isEmpty()) {
@@ -97,6 +101,7 @@ public class ImageService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "images", key = "#postId")
     public List<ResponseImageDTO> getImageByPost(Long postId) {
         List<Image> images = imageRepository.findAllByPostId(postId);
         // 해당 게시글에 아무런 이미지가 없다면 null
@@ -112,7 +117,8 @@ public class ImageService {
         return result;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true) // 실제 이미지를 제공하는 메소드
+    @Cacheable(value = "imageFile", key = "#imagename")
     public byte[] getImageFile(String imagename) throws IOException {
         File imageFile = new File(storagePath + imagename);
         if(!imageFile.exists()) {
@@ -126,6 +132,7 @@ public class ImageService {
 
 
     @Transactional // 이미지 식별자로 이미지 제거(게시글 수정 시 사용)
+    @CacheEvict(value = "images", key = "#postId")
     public boolean deleteImageById(List<Long> imageIds, Long postId) throws IOException {
         Optional<Post> post = postRepository.findById(postId);
         if(post.isEmpty()) {
@@ -162,6 +169,7 @@ public class ImageService {
     }
 
     @Transactional // 게시글 식별자로 게시글에 소속된 이미지 모두 제거
+    @CacheEvict(value = "images", key = "#postId")
     public boolean deleteImageByPostId(Long postId) throws IOException {
         String authUsername = SecurityContextHolder.getContext().getAuthentication().getName();
         Optional<Post> post = postRepository.findById(postId);
@@ -174,7 +182,7 @@ public class ImageService {
         }
         // 1. db에서 이미지 저장 위치정보 조회
         List<Image> images = imageRepository.findAllByPost(post.get().getId());
-        if(images.isEmpty()){
+        if(images == null){
             return true;
         }
 
