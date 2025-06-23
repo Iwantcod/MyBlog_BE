@@ -10,6 +10,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class AuthDTO {
     // JWT를 이용한 인증을 위해 유저 정보를 전달할 때 사용되는 DTO
+    private Long memberId; // 회원 식별자
     private String username;
     private String password;
     // JWT에서는 ENUM 타입을 사용하면 안 된다. 따라서 String 으로 변환하여 검색

@@ -71,7 +71,7 @@ public class AuthController {
     }
 
     // Refresh Token을 받아 토큰 검증을 하고, 새 토큰 반환
-    @PostMapping("/refresh")
+    @GetMapping("/refresh")
     @Operation(summary = "Refresh Token 재발급", description = "Access Token 또한 재발급한다.")
     public ResponseEntity<?> tokenRefresh(HttpServletRequest request, HttpServletResponse response) {
         Cookie[] cookies = authService.tokenRefresh(request.getCookies());

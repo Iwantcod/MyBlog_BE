@@ -109,7 +109,7 @@ public class SecurityConfig {
                     }
                 }))
                 .authorizeHttpRequests((auth) ->
-                        auth.requestMatchers("/api/auth/**", "/login", "/join", "/oauth2/**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll() // 인증을 요청하는 api 및 회원가입, 로그인 페이지는 무인가 접근 허용
+                        auth.requestMatchers("/api/auth/**", "/login", "/join", "/oauth2/**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**").permitAll() // 인증을 요청하는 api 및 회원가입, 로그인 페이지는 무인증 접근 허용
                                 .requestMatchers("/api/admin/**").hasRole("ADMIN") // admin 관련 페이지와 api 요청은 ADMIN만 가능
                                 .anyRequest().authenticated())
                 .formLogin(AbstractHttpConfigurer::disable)
@@ -127,7 +127,6 @@ public class SecurityConfig {
                 .addFilterAt(loginFilter, UsernamePasswordAuthenticationFilter.class) // 두번째 인자의 필터 순서에 LoginFilter를 추가한다.(바로 앞에 삽입된다)
                 .sessionManagement((session) ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)); // JWT 인증방식을 위해 STATELESS 설정 (세션 미사용)
-
         return http.build();
     }
 }

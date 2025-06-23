@@ -53,6 +53,7 @@ public class LoginFilter extends UsernamePasswordAuthenticationFilter {
         JwtUserDetails jwtUserDetails = (JwtUserDetails) auth.getPrincipal();
 
         // 얻어온 사용자 정보에서 유저네임과 권한 정보를 추출한다.
+        Long memberId = jwtUserDetails.getMemberId();
         String username = jwtUserDetails.getUsername();
         Collection<? extends GrantedAuthority> authorities = jwtUserDetails.getAuthorities();
 

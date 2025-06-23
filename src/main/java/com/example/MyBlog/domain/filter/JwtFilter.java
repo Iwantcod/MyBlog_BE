@@ -9,6 +9,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,6 +23,9 @@ public class JwtFilter extends OncePerRequestFilter {
     // JWT 검증을 위한 필터
     // 요청 헤더 Authorization 키에 JWT가 존재하는 경우 검증하고, 강제로 SecurityContextHolder에 세션을 생성한다.
         // 이 세션은 StateLess 상태로 관리되므로, 해당 요청이 종료되면 같이 소멸한다.
+
+    @Value("${app.client-url}")
+    private String clientUrl;
 
     private final JwtUtil jwtUtil;
     public JwtFilter(JwtUtil jwtUtil) {
@@ -54,10 +58,11 @@ public class JwtFilter extends OncePerRequestFilter {
             // 만약 access token이 만료되었다면, refresh token을 이용하여 새로운 토큰 발급 로직이 필요
             // 이 부분은 별도의 리프레시 로직(예: /api/auth/refresh)을 구현하여 처리
             filterChain.doFilter(request, response);
+            response.sendRedirect(clientUrl + "/api/auth/refresh"); // Refresh token을 이용한 jwt 재발급하는 요청을 하도록 리다이렉션 응답
             return;
         }
 
-        System.out.println("authorization now");
+//        System.out.println("authorization now");
 
         // 예외사항에 해당되지 않으면 아래를 실행
         setAuthentication(accessToken);

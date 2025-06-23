@@ -39,6 +39,10 @@ public class JwtUserDetails implements UserDetails {
     public String getUsername() {
         return authDTO.getUsername();
     }
+    
+    public Long getMemberId() {
+        return authDTO.getMemberId();
+    }
 
     @Override
     public boolean isAccountNonExpired() {
@@ -59,6 +63,4 @@ public class JwtUserDetails implements UserDetails {
     public boolean isEnabled() {
         return true;
     }
-
-
 }

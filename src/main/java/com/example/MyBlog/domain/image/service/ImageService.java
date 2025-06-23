@@ -13,11 +13,11 @@ import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @Slf4j
@@ -57,8 +58,8 @@ public class ImageService {
     }
 
     // 이미지 저장(이미 생성된 게시글에 이미지를 추가할 시 사용)
-    @Transactional
     @CacheEvict(value = "images", key = "#postId")
+    @Transactional
     public boolean addImages(List<MultipartFile> fileList, Long postId) throws IOException {
         Optional<Post> post = postRepository.findById(postId);
         if(post.isEmpty()) {
@@ -69,6 +70,7 @@ public class ImageService {
         // 스토리지 기본 경로에 해당하는 디렉토리가 존재하지 않는 경우, 디렉토리(스토리지) 생성: 에러 방지
         Files.createDirectories(Paths.get(storagePath));
 
+        int imageCounter = 0;
         for (MultipartFile file : fileList) {
             String originalFilename = file.getOriginalFilename();
             if(originalFilename == null) {
@@ -93,12 +95,63 @@ public class ImageService {
             image.setPost(post.get());
             imageRepository.save(image);
             // 게시글의 이미지 카운트 1 증가
-            post.get().setImagesCount(post.get().getImagesCount() + 1);
-            postRepository.save(post.get());
-
+            imageCounter++;
         }
+        post.get().setImagesCount(post.get().getImagesCount() + imageCounter);
+        postRepository.save(post.get());
         return true;
     }
+
+//    @Async("imageTaskExecutor")
+//    @CacheEvict(value = "images", key = "#postId")
+//    @Transactional(propagation = Propagation.REQUIRES_NEW)
+//    public CompletableFuture<String> addImages(MultipartFile file, Long postId) throws IOException {
+//        try {
+//            Optional<Post> post = postRepository.findById(postId);
+//            if(post.isEmpty()) {
+//                throw new IllegalArgumentException("Post not found with ID: " + postId);
+//            }
+//
+//            // 스토리지 기본 경로에 해당하는 디렉토리가 존재하지 않는 경우, 디렉토리(스토리지) 생성: 에러 방지
+//            Files.createDirectories(Paths.get(storagePath));
+//
+//            String originalFilename = file.getOriginalFilename();
+//            if(originalFilename == null) {
+//                throw new IllegalArgumentException("Invalid file name");
+//            }
+//
+//            // 파일 확장자 추출
+//            String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+//            // 새로운 파일명 생성: uuid + 확장자
+//            String newFileName = UUID.randomUUID().toString() + fileExtension;
+//            // 파일 저장 경로 생성
+//            String filePath = storagePath + newFileName;
+//
+//            Thumbnails.of(file.getInputStream())  // 업로드된 파일의 입력 스트림 사용
+//                    .size(800, 600)               // 이미지 크기 조절 (800x600 픽셀)
+//                    .outputQuality(0.7)           // 품질 조절 (70% 품질로 압축)
+//                    .toFile(filePath);            // 최종적으로 압축된 파일 저장
+//
+//            // 이미지 테이블에 저장
+////            Image image = new Image();
+////            image.setImageUrl(newFileName);
+////            image.setPost(post.get());
+////            imageRepository.save(image);
+//            // 게시글의 이미지 카운트 1 증가
+////            post.get().setImagesCount(post.get().getImagesCount() + imageCounter);
+////            postRepository.save(post.get());
+//            return CompletableFuture.completedFuture(newFileName);
+//        } catch (IOException e) {
+//            return null;
+//        }
+//    }
+
+    // 1. 클라이언트로부터 이미지 파일 리스트를 받는다.
+    // 2. 리스트를 순회하며 '1개의 파일을 스토리지에 업로드하는 비동기 메소드'를 호출한다.
+    // 3. 비동기 메소드는 업로드 성공 시 '스토리지 경로'를 반환한다. 실패 시 null을 반환한다.
+    // 4. 반환된 스토리지 경로와 'post' 객체를 이용하여 'images' 테이블에 새로운 정보를 추가한다.
+
+
 
     @Transactional(readOnly = true)
     @Cacheable(value = "images", key = "#postId")
